@@ -146,6 +146,10 @@
        status = "okay";
 };
 
+&i2s1 {
+       status = "okay";
+};
+
 &mdio {
        ext_rmii_phy: ethernet-phy@1 {
                compatible = "ethernet-phy-id0044.1400",
@@ -350,6 +354,10 @@
 
 &rtc {
 	clocks = <&ext_osc32k>;
+};
+
+&sound_hdmi {
+       status = "okay";
 };
 
 &spdif {
