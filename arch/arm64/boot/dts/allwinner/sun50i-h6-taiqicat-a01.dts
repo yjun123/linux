@@ -14,6 +14,7 @@
 	compatible = "ultrapower,taiqicat-a01", "allwinner,sun50i-h6";
 
 	aliases {
+		ethernet0 = &emac;
 		ethernet1 = &sdio_wifi;
 		serial0 = &uart0;
 	};
@@ -87,6 +88,16 @@
 	};
 };
 
+&ac200_ephy_ctl {
+       x-powers,led-polarity = <GPIO_ACTIVE_HIGH>;
+       phy-address = <1>;
+       status = "okay";
+};
+
+&ac200_pwm_clk {
+       status = "okay";
+};
+
 &cpu0 {
 	cpu-supply = <&reg_dcdca>;
 };
@@ -107,6 +118,14 @@
 	status = "okay";
 };
 
+&emac {
+       pinctrl-names = "default";
+       pinctrl-0 = <&ext_rmii_pins>;
+       phy-mode = "rmii";
+       phy-handle = <&ext_rmii_phy>;
+       status = "okay";
+};
+
 &gpu {
 	mali-supply = <&reg_dcdcc>;
 	status = "okay";
@@ -121,6 +140,21 @@
 	hdmi_out_con: endpoint {
 		remote-endpoint = <&hdmi_con_in>;
 	};
+};
+
+&i2c3 {
+       status = "okay";
+};
+
+&mdio {
+       ext_rmii_phy: ethernet-phy@1 {
+               compatible = "ethernet-phy-id0044.1400",
+                            "ethernet-phy-ieee802.3-c22";
+               reg = <1>;
+               resets = <&ac200_ephy_ctl>;
+               reset-names = "phy";
+               clocks = <&ac200_ephy_ctl>;
+       };
 };
 
 &mmc0 {
@@ -293,6 +327,10 @@
 			};
 		};
 	};
+};
+
+&pwm {
+       status = "okay";
 };
 
 &r_ir {
