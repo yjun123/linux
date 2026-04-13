@@ -148,6 +148,7 @@ properties:
               - amlogic,s400
               - jethome,jethub-j100
               - jethome,jethub-j110
+              - lingban,rokid-mini-rp105
           - const: amlogic,a113d
           - const: amlogic,meson-axg
 
