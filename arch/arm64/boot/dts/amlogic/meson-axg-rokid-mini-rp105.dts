@@ -1,0 +1,559 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2026 Jun Yan <jerrysteve1101@gmail.com>
+ */
+
+/dts-v1/;
+
+#include "meson-axg.dtsi"
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "Rokid Mini RP105";
+	compatible = "lingban,rokid-mini-rp105", "amlogic,a113d", "amlogic,meson-axg";
+	chassis-type = "embedded";
+
+	aliases {
+		serial0 = &uart_AO;
+		ethernet0 = &brcmf;
+	};
+
+	lineout: audio-codec-1 {
+		#sound-dai-cells = <0>;
+		compatible = "everest,es7154";
+		VDD-supply = <&vcc_5v>;
+		PVDD-supply = <&vcc_3v3>;
+		sound-name-prefix = "Lineout";
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* 256MB RAM */
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x10000000>;
+	};
+
+	vcc_3v3: regulator-vcc-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "VCC_3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vddao_3v3>;
+		regulator-always-on;
+	};
+
+	vcc_5v: regulator-vcc-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "VCC5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	vddao_3v3: regulator-vddao-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "VDDAO_3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vcc_5v>;
+		regulator-always-on;
+	};
+
+	vddio_ao18: regulator-vddio-ao18 {
+		compatible = "regulator-fixed";
+		regulator-name = "VDDIO_AO18";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vddao_3v3>;
+		regulator-always-on;
+	};
+
+	vddio_boot: regulator-vddio-boot {
+		compatible = "regulator-fixed";
+		regulator-name = "VDDIO_BOOT";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vddao_3v3>;
+		regulator-always-on;
+	};
+
+	usb_pwr: regulator-usb-pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "USB_PWR";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc_5v>;
+
+		gpio = <&gpio_ao GPIOAO_5 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		clocks = <&wifi32k>;
+		clock-names = "ext_clock";
+		reset-gpios = <&gpio GPIOX_7 GPIO_ACTIVE_LOW>;
+	};
+
+	wifi32k: wifi32k {
+		compatible = "pwm-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		pwms = <&pwm_ab 0 30518 0>; /* PWM_A at 32.768KHz */
+	};
+};
+
+&gpio_ao {
+	/*
+	 * IS31FL3236 and IS31FL3193 share the same SDB GPIO pin.
+	 * Drivers cannot control it concurrently, hence using GPIO hog.
+	 */
+	led-powerdown-n-hog {
+		gpios = <GPIOAO_3 GPIO_ACTIVE_LOW>;
+		gpio-hog;
+		line-name = "led-powerdown-n-hog";
+		output-low;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	pinctrl-0 = <&i2c0_pins>;
+	pinctrl-names = "default";
+
+	is31fl3236: led-controller@3c {
+		compatible = "issi,is31fl3236a";
+		reg = <0x3c>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		issi,22khz-pwm;
+
+		/* Each set of three channels drives one RGB LED,
+		with a total of 12 circular RGB LEDs connected.*/
+		led@1 {
+			reg = <1>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <1>;
+		};
+
+		led@2 {
+			reg = <2>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <1>;
+		};
+
+		led@3 {
+			reg = <3>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <1>;
+		};
+
+		led@4 {
+			reg = <4>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <2>;
+		};
+
+		led@5 {
+			reg = <5>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <2>;
+		};
+
+		led@6 {
+			reg = <6>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <2>;
+		};
+
+		led@7 {
+			reg = <7>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <3>;
+		};
+
+		led@8 {
+			reg = <8>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <3>;
+		};
+
+		led@9 {
+			reg = <9>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <3>;
+		};
+
+		led@a {
+			reg = <10>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <4>;
+		};
+
+		led@b {
+			reg = <11>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <4>;
+		};
+
+		led@c {
+			reg = <12>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <4>;
+		};
+
+		led@d {
+			reg = <13>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <5>;
+		};
+
+		led@e {
+			reg = <14>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <5>;
+		};
+
+		led@f {
+			reg = <15>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <5>;
+		};
+
+		led@10 {
+			reg = <16>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <6>;
+		};
+
+		led@11 {
+			reg = <17>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <6>;
+		};
+
+		led@12 {
+			reg = <18>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <6>;
+		};
+
+		led@13 {
+			reg = <19>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <7>;
+		};
+
+		led@14 {
+			reg = <20>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <7>;
+		};
+
+		led@15 {
+			reg = <21>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <7>;
+		};
+
+		led@16 {
+			reg = <22>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <8>;
+		};
+
+		led@17 {
+			reg = <23>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <8>;
+		};
+
+		led@18 {
+			reg = <24>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <8>;
+		};
+
+		led@19 {
+			reg = <25>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <9>;
+		};
+
+		led@1a {
+			reg = <26>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <9>;
+		};
+
+		led@1b {
+			reg = <27>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <9>;
+		};
+
+		led@1c {
+			reg = <28>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <10>;
+		};
+
+		led@1d {
+			reg = <29>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <10>;
+		};
+
+		led@1e {
+			reg = <30>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <10>;
+		};
+
+		led@1f {
+			reg = <31>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <11>;
+		};
+
+		led@20 {
+			reg = <32>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <11>;
+		};
+
+		led@21 {
+			reg = <33>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <11>;
+		};
+
+		led@22 {
+			reg = <34>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <12>;
+		};
+
+		led@23 {
+			reg = <35>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <12>;
+		};
+
+		led@24 {
+			reg = <36>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <12>;
+		};
+	};
+
+	is31fl3193: led-controller@68 {
+		compatible = "issi,is31fl3193";
+		reg = <0x68>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* Three channels are connected to the central RGB LED. */
+		led@1 {
+			reg = <1>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_RED>;
+			function-enumerator = <0>;
+		};
+
+		led@2 {
+			reg = <2>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_GREEN>;
+			function-enumerator = <0>;
+		};
+
+		led@3 {
+			reg = <3>;
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			function-enumerator = <0>;
+		};
+	};
+};
+
+&i2c_AO {
+	status = "okay";
+	pinctrl-0 = <&i2c_ao_sck_10_pins>, <&i2c_ao_sda_11_pins>;
+	pinctrl-names = "default";
+
+	touch@28 {
+		compatible = "microchip,cap1114";
+		reg = <0x28>;
+		autorepeat;
+		interrupt-parent = <&gpio_intc>;
+		interrupts = <6 IRQ_TYPE_LEVEL_HIGH>; /* GPIOAO_6 */
+		interrupt-names = "alert";
+		reset-gpios = <&gpio GPIOA_18 GPIO_ACTIVE_HIGH>;
+
+		linux,keycodes = <2>, /* KEY_1 */
+						<3>, /* KEY_2 */
+						<4>, /* KEY_3 */
+						<5>, /* KEY_4 */
+						<6>, /* KEY_5 */
+						<7>, /* KEY_6 */
+						<8>, /* KEY_7 */
+						<9>, /* KEY_8 */
+						<11>, /* KEY_0 */
+						<10>, /* KEY_9 */
+						<59>, /* KEY_F1 */
+						<60>, /* KEY_F2 */
+						<61>, /* KEY_F3 */
+						<62>; /* KEY_F4 */
+	};
+};
+
+&nfc {
+	status = "okay";
+
+	nand@0 {
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		nand-ecc-mode = "hw";
+		nand-ecc-step-size = <1024>;
+		nand-ecc-strength = <8>;
+		nand-is-boot-medium;
+		nand-rb = <0>;
+
+		amlogic,boot-pages = <1024>;
+    	amlogic,boot-page-step = <128>;
+
+		partition@0 {
+			label = "bootloader";
+			reg = <0x0 0x200000>;
+		};
+
+		partition@800000 {
+			label = "tpl";
+			reg = <0x800000 0x800000>;
+		};
+
+		partition@1000000 {
+			label = "misc";
+			reg = <0x1000000 0x200000>;
+		};
+
+		partition@1200000 {
+			label = "recovery";
+			reg = <0x1200000 0x1000000>;
+		};
+
+		partition@2200000 {
+			label = "boot";
+			reg = <0x2200000 0xa00000>;
+		};
+
+		partition@2c00000 {
+			label = "system";
+			reg = <0x2c00000 0x1d400000>;
+		};
+	};
+};
+
+&pwm_ab {
+	status = "okay";
+	pinctrl-0 = <&pwm_a_x20_pins>;
+	pinctrl-names = "default";
+};
+
+/* wifi module */
+&sd_emmc_b {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-0 = <&sdio_pins>;
+	pinctrl-1 = <&sdio_clk_gate_pins>;
+	pinctrl-names = "default", "clk-gate";
+
+	bus-width = <4>;
+	cap-sd-highspeed;
+	sd-uhs-sdr104;
+	max-frequency = <200000000>;
+	non-removable;
+	disable-wp;
+
+	mmc-pwrseq = <&sdio_pwrseq>;
+
+	vmmc-supply = <&vddao_3v3>;
+	vqmmc-supply = <&vddio_boot>;
+
+	brcmf: wifi@1 {
+		reg = <1>;
+		compatible = "brcm,bcm43430a1-fmac", "brcm,bcm4329-fmac";
+	};
+};
+
+&uart_A {
+	status = "okay";
+	pinctrl-0 = <&uart_a_pins>, <&uart_a_cts_rts_pins>;
+	pinctrl-names = "default";
+	uart-has-rtscts;
+
+	bluetooth {
+		compatible = "brcm,bcm43430a1-bt";
+		clocks = <&wifi32k>;
+		clock-names = "lpo";
+		reset-gpios = <&gpio GPIOX_21 GPIO_ACTIVE_LOW>;
+		vbat-supply = <&vddao_3v3>;
+		vddio-supply = <&vddio_boot>;
+	};
+};
+
+&uart_AO {
+	status = "okay";
+	pinctrl-0 = <&uart_ao_a_pins>;
+	pinctrl-names = "default";
+};
+
+&usb {
+	status = "okay";
+	dr_mode = "peripheral";
+};
