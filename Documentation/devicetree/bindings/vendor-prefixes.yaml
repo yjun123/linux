@@ -949,6 +949,8 @@ patternProperties:
     description: Lincoln Technology Solutions
   "^lineartechnology,.*":
     description: Linear Technology
+  "^lingban,.*":
+    description: Hangzhou Lingban Technology Co. Ltd.
   "^linkease,.*":
     description: Shenzhen LinkEase Network Technology Co., Ltd.
   "^linksprite,.*":
