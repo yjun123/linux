@@ -10,6 +10,7 @@
  */
 
 #include <linux/device.h>
+#include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include <linux/leds.h>
@@ -60,6 +61,7 @@ struct is31fl32xx_led_data {
 struct is31fl32xx_priv {
 	const struct is31fl32xx_chipdef *cdef;
 	struct i2c_client *client;
+	struct gpio_desc *powerdown_gpio;
 	unsigned int num_leds;
 	struct is31fl32xx_led_data leds[];
 };
@@ -415,6 +417,14 @@ static struct is31fl32xx_led_data *is31fl32xx_find_led_data(
 	return NULL;
 }
 
+static void is31fl32xx_powerdown_cleanup(void *data)
+{
+	struct is31fl32xx_priv *priv = data;
+
+	if (priv->powerdown_gpio)
+		gpiod_set_value_cansleep(priv->powerdown_gpio, 1);
+}
+
 static int is31fl32xx_parse_dt(struct device *dev,
 			       struct is31fl32xx_priv *priv)
 {
@@ -588,6 +598,19 @@ static int is31fl32xx_probe(struct i2c_client *client)
 	priv->client = client;
 	priv->cdef = cdef;
 	i2c_set_clientdata(client, priv);
+
+	/*
+	 * Driving this GPIO line low takes the chip out of shutdown,
+	 * as it is flagged as GPIO_ACTIVE_LOW in provider (such as the device tree).
+	 */
+	priv->powerdown_gpio = devm_gpiod_get_optional(dev, "powerdown", GPIOD_OUT_LOW);
+	if (IS_ERR(priv->powerdown_gpio))
+		return dev_err_probe(dev, PTR_ERR(priv->powerdown_gpio),
+				     "Failed to get 'powerdown' GPIO\n");
+
+	ret = devm_add_action_or_reset(dev, is31fl32xx_powerdown_cleanup, priv);
+	if (ret)
+		return ret;
 
 	ret = is31fl32xx_parse_dt(dev, priv);
 	if (ret)
