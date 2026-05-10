@@ -26,6 +26,7 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
+#include <linux/clk.h>
 
 #include "rl6231.h"
 #include "rt5645.h"
@@ -457,6 +458,7 @@ struct rt5645_priv {
 	struct rt5645_eq_param_s *eq_param;
 	struct timer_list btn_check_timer;
 	struct mutex jd_mutex;
+	struct clk *mclk;
 
 	int codec_type;
 	int sysclk;
@@ -3086,6 +3088,13 @@ static int rt5645_set_bias_level(struct snd_soc_component *component,
 			snd_soc_component_update_bits(component, RT5645_GEN_CTRL1,
 				RT5645_DIG_GATE_CTRL, RT5645_DIG_GATE_CTRL);
 		}
+		if (!IS_ERR(rt5645->mclk)){
+			if (snd_soc_dapm_get_bias_level(dapm) == SND_SOC_BIAS_ON) {
+				clk_disable_unprepare(rt5645->mclk);
+			} else {
+				clk_prepare_enable(rt5645->mclk);
+			}
+		}
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
@@ -3450,6 +3459,13 @@ static int rt5645_probe(struct snd_soc_component *component)
 {
 	struct snd_soc_dapm_context *dapm = snd_soc_component_to_dapm(component);
 	struct rt5645_priv *rt5645 = snd_soc_component_get_drvdata(component);
+
+	/* Check if MCLK provided */
+	rt5645->mclk = devm_clk_get(component->dev, "mclk");
+	if (PTR_ERR(rt5645->mclk) == -EPROBE_DEFER){
+		dev_err(component->dev, "unable to get mclk\n");
+		return -EPROBE_DEFER;
+	}
 
 	rt5645->component = component;
 
