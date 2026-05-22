@@ -1062,6 +1062,52 @@ static const struct iio_buffer_setup_ops bmg160_buffer_setup_ops = {
 	.postdisable = bmg160_buffer_postdisable,
 };
 
+static int bmg160_trigger_probe(struct bmg160_data *data)
+{
+	struct device *dev = regmap_get_device(data->regmap);
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	int ret;
+
+	ret = devm_request_threaded_irq(dev,
+					data->irq,
+					bmg160_data_rdy_trig_poll,
+					bmg160_event_handler,
+					IRQ_TYPE_EDGE_RISING,
+					"bmg160_event",
+					indio_dev);
+	if (ret)
+		return ret;
+
+	data->dready_trig = devm_iio_trigger_alloc(dev,
+						   "%s-dev%d",
+						   indio_dev->name,
+						   iio_device_id(indio_dev));
+	if (!data->dready_trig)
+		return -ENOMEM;
+
+	data->motion_trig = devm_iio_trigger_alloc(dev,
+						   "%s-any-motion-dev%d",
+						   indio_dev->name,
+						   iio_device_id(indio_dev));
+	if (!data->motion_trig)
+		return -ENOMEM;
+
+	data->dready_trig->ops = &bmg160_trigger_ops;
+	iio_trigger_set_drvdata(data->dready_trig, indio_dev);
+	ret = iio_trigger_register(data->dready_trig);
+	if (ret)
+		return ret;
+
+	data->motion_trig->ops = &bmg160_trigger_ops;
+	iio_trigger_set_drvdata(data->motion_trig, indio_dev);
+	ret = iio_trigger_register(data->motion_trig);
+	if (ret) {
+		data->motion_trig = NULL;
+	}
+
+	return 0;
+}
+
 int bmg160_core_probe(struct device *dev, struct regmap *regmap, int irq,
 		      const char *name)
 {
@@ -1102,41 +1148,9 @@ int bmg160_core_probe(struct device *dev, struct regmap *regmap, int irq,
 	indio_dev->info = &bmg160_info;
 
 	if (data->irq > 0) {
-		ret = devm_request_threaded_irq(dev,
-						data->irq,
-						bmg160_data_rdy_trig_poll,
-						bmg160_event_handler,
-						IRQF_TRIGGER_RISING,
-						"bmg160_event",
-						indio_dev);
-		if (ret)
-			return ret;
-
-		data->dready_trig = devm_iio_trigger_alloc(dev,
-							   "%s-dev%d",
-							   indio_dev->name,
-							   iio_device_id(indio_dev));
-		if (!data->dready_trig)
-			return -ENOMEM;
-
-		data->motion_trig = devm_iio_trigger_alloc(dev,
-							  "%s-any-motion-dev%d",
-							  indio_dev->name,
-							  iio_device_id(indio_dev));
-		if (!data->motion_trig)
-			return -ENOMEM;
-
-		data->dready_trig->ops = &bmg160_trigger_ops;
-		iio_trigger_set_drvdata(data->dready_trig, indio_dev);
-		ret = iio_trigger_register(data->dready_trig);
-		if (ret)
-			return ret;
-
-		data->motion_trig->ops = &bmg160_trigger_ops;
-		iio_trigger_set_drvdata(data->motion_trig, indio_dev);
-		ret = iio_trigger_register(data->motion_trig);
-		if (ret) {
-			data->motion_trig = NULL;
+		ret = bmg160_trigger_probe(data);
+		if (ret < 0) {
+			dev_err(dev, "Error probing trigger\n");
 			goto err_trigger_unregister;
 		}
 	}
