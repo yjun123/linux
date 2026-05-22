@@ -18,6 +18,7 @@
 #include <linux/iio/trigger_consumer.h>
 #include <linux/iio/triggered_buffer.h>
 #include <linux/interrupt.h>
+#include <linux/of_irq.h>
 #include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
@@ -48,10 +49,14 @@
 #define BMG160_GYRO_RESET_VAL		0xb6
 
 #define BMG160_REG_INT_MAP_0		0x17
-#define BMG160_INT_MAP_0_BIT_ANY	BIT(1)
+#define BMG160_INT_MAP_0_BIT_INT1_ANY	BIT(1)
 
 #define BMG160_REG_INT_MAP_1		0x18
-#define BMG160_INT_MAP_1_BIT_NEW_DATA	BIT(0)
+#define BMG160_INT_MAP_1_BIT_INT1_NEW_DATA	BIT(0)
+#define BMG160_INT_MAP_1_BIT_INT2_NEW_DATA	BIT(7)
+
+#define BMG160_REG_INT_MAP_2		0x19
+#define BMG160_INT_MAP_2_BIT_INT2_ANY	BIT(1)
 
 #define BMG160_REG_INT_RST_LATCH	0x21
 #define BMG160_INT_MODE_LATCH_RESET	0x80
@@ -62,7 +67,14 @@
 #define BMG160_DATA_ENABLE_INT		BIT(7)
 
 #define BMG160_REG_INT_EN_1		0x16
-#define BMG160_INT1_BIT_OD		BIT(1)
+#define BMG160_INT1_PIN_LVL_MSK     BIT(0)
+#define BMG160_INT1_PIN_LVL(x) 		FIELD_PREP(BMG160_INT1_PIN_LVL_MSK, x)
+#define BMG160_INT1_PIN_OD_MSK 		BIT(1)
+#define BMG160_INT1_PIN_OD(x) 		FIELD_PREP(BMG160_INT1_PIN_OD_MSK, x)
+#define BMG160_INT2_PIN_LVL_MSK     BIT(2)
+#define BMG160_INT2_PIN_LVL(x) 		FIELD_PREP(BMG160_INT2_PIN_LVL_MSK, x)
+#define BMG160_INT2_PIN_OD_MSK 		BIT(3)
+#define BMG160_INT2_PIN_OD(x) 		FIELD_PREP(BMG160_INT2_PIN_OD_MSK, x)
 
 #define BMG160_REG_XOUT_L		0x02
 #define BMG160_AXIS_TO_REG(axis)	(BMG160_REG_XOUT_L + (axis * 2))
@@ -107,6 +119,18 @@ struct bmg160_data {
 	bool dready_trigger_on;
 	bool motion_trigger_on;
 	int irq;
+	int int_pin;
+};
+
+/* BMG160 interrupt pins */
+enum bmg160_int_pin {
+	BMG160_PIN_INT1,
+	BMG160_PIN_INT2,
+};
+
+static const char* const bmg160_int_pin_names[] = {
+	[BMG160_PIN_INT1] = "INT1",
+	[BMG160_PIN_INT2] = "INT2",
 };
 
 enum bmg160_axis {
@@ -295,14 +319,6 @@ static int bmg160_chip_init(struct bmg160_data *data)
 	}
 	data->slope_thres = val;
 
-	/* Set default interrupt mode */
-	ret = regmap_clear_bits(data->regmap, BMG160_REG_INT_EN_1,
-				BMG160_INT1_BIT_OD);
-	if (ret < 0) {
-		dev_err(dev, "Error updating bits in reg_int_en_1\n");
-		return ret;
-	}
-
 	ret = regmap_write(data->regmap, BMG160_REG_INT_RST_LATCH,
 			   BMG160_INT_MODE_LATCH_INT |
 			   BMG160_INT_MODE_LATCH_RESET);
@@ -345,13 +361,25 @@ static int bmg160_setup_any_motion_interrupt(struct bmg160_data *data,
 	struct device *dev = regmap_get_device(data->regmap);
 	int ret;
 
-	/* Enable/Disable INT_MAP0 mapping */
-	ret = regmap_update_bits(data->regmap, BMG160_REG_INT_MAP_0,
-				 BMG160_INT_MAP_0_BIT_ANY,
-				 (status ? BMG160_INT_MAP_0_BIT_ANY : 0));
-	if (ret < 0) {
-		dev_err(dev, "Error updating bits reg_int_map0\n");
-		return ret;
+	if (data->int_pin == BMG160_PIN_INT2) {
+		/* Enable/Disable INT_MAP2 mapping */
+		ret = regmap_update_bits(data->regmap, BMG160_REG_INT_MAP_2,
+				 BMG160_INT_MAP_2_BIT_INT2_ANY,
+				 (status ? BMG160_INT_MAP_2_BIT_INT2_ANY : 0));
+		if (ret < 0) {
+			dev_err(dev, "Error updating bits reg_int_map2\n");
+			return ret;
+		}
+	}
+	else {
+		/* Enable/Disable INT_MAP0 mapping */
+		ret = regmap_update_bits(data->regmap, BMG160_REG_INT_MAP_0,
+				 BMG160_INT_MAP_0_BIT_INT1_ANY,
+				 (status ? BMG160_INT_MAP_0_BIT_INT1_ANY : 0));
+		if (ret < 0) {
+			dev_err(dev, "Error updating bits reg_int_map0\n");
+			return ret;
+		}
 	}
 
 	/* Enable/Disable slope interrupts */
@@ -408,11 +436,15 @@ static int bmg160_setup_new_data_interrupt(struct bmg160_data *data,
 {
 	struct device *dev = regmap_get_device(data->regmap);
 	int ret;
+	unsigned int mask;
 
 	/* Enable/Disable INT_MAP1 mapping */
+	mask = (data->int_pin == BMG160_PIN_INT2) ?
+			BMG160_INT_MAP_1_BIT_INT2_NEW_DATA :
+			BMG160_INT_MAP_1_BIT_INT1_NEW_DATA;
+
 	ret = regmap_update_bits(data->regmap, BMG160_REG_INT_MAP_1,
-				 BMG160_INT_MAP_1_BIT_NEW_DATA,
-				 (status ? BMG160_INT_MAP_1_BIT_NEW_DATA : 0));
+				 mask, status ? mask : 0);
 	if (ret < 0) {
 		dev_err(dev, "Error updating bits in reg_int_map1\n");
 		return ret;
@@ -1064,25 +1096,73 @@ static const struct iio_buffer_setup_ops bmg160_buffer_setup_ops = {
 	.postdisable = bmg160_buffer_postdisable,
 };
 
+static int bmg160_config_int_pin(struct bmg160_data *data, bool irq_active_high, 
+				 bool irq_open_drain)
+{
+	struct device *dev = regmap_get_device(data->regmap);
+	int i, irq = 0;
+	unsigned int mask, val;
+	int ret;
+
+	/*
+	 * Get the interrupt from the devicetre by reading the interrupt-names
+	 * property. If it is not specified, use BMG160_PIN_INT1 pin as default.
+	 */
+	 data->int_pin = BMG160_PIN_INT1;
+	 for (i = 0; i < ARRAY_SIZE(bmg160_int_pin_names); i++) {
+		irq = of_irq_get_byname(dev->of_node, bmg160_int_pin_names[i]);
+		if (irq == data->irq) {
+			data->int_pin = i;
+			break;
+		}
+	}
+
+	if (data->int_pin == BMG160_PIN_INT2) {
+		mask = BMG160_INT2_PIN_LVL_MSK | BMG160_INT2_PIN_OD_MSK;
+		val = BMG160_INT2_PIN_LVL(irq_active_high) |
+		      BMG160_INT2_PIN_OD(irq_open_drain);
+	}
+	else {
+		mask = BMG160_INT1_PIN_LVL_MSK | BMG160_INT1_PIN_OD_MSK;
+		val = BMG160_INT1_PIN_LVL(irq_active_high) |
+		      BMG160_INT1_PIN_OD(irq_open_drain);
+	}
+
+	ret = regmap_update_bits(data->regmap, BMG160_REG_INT_EN_1, mask, val);
+	if (ret < 0) {
+		 dev_err(dev, "Error updating bits in reg_int_en_1\n");
+	}
+
+	return 0;
+}
+
 static int bmg160_trigger_probe(struct bmg160_data *data)
 {
 	struct device *dev = regmap_get_device(data->regmap);
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	unsigned int irq_type;
-	bool irq_open_drain;
+	bool irq_active_high, irq_open_drain;
 	int ret;
 
 	irq_open_drain = device_property_read_bool(dev, "drive-open-drain");
 
 	irq_type = irq_get_trigger_type(data->irq);
-	if (irq_type != IRQF_TRIGGER_FALLING && irq_type != IRQF_TRIGGER_RISING) {
+	if (irq_type == IRQF_TRIGGER_FALLING) {
+		irq_active_high = false;
+	} else if (irq_type == IRQF_TRIGGER_RISING) {
+		irq_active_high = true;
+	} else {
 		dev_err(dev,
-				"Invalid interrupt type 0x%x specified\n", irq_type);
+			"Invalid interrupt type 0x%x specified\n", irq_type);
 		return -EINVAL;
 	}
 
 	if (irq_open_drain)
 		irq_type |= IRQF_SHARED;
+
+	ret = bmg160_config_int_pin(data, irq_active_high, irq_open_drain);
+	if (ret < 0)
+		return ret;
 
 	ret = devm_request_threaded_irq(dev,
 					data->irq,
