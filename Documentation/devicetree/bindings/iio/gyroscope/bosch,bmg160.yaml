@@ -36,8 +36,23 @@ properties:
     minItems: 1
     maxItems: 2
     description:
-      Should be configured with type IRQ_TYPE_EDGE_RISING.
+      Should be configured with type IRQ_TYPE_EDGE_RISING or 
+      IRQ_TYPE_EDGE_FALLING.
       If two interrupts are provided, expected order is INT1 and INT2.
+
+  interrupt-names:
+    minItems: 1
+    maxItems: 2
+    items:
+      enum:
+        - INT1
+        - INT2
+
+  drive-open-drain:
+    type: boolean
+    description:
+      set if the interrupt pin(s) should be configured as
+      open drain. If not set, defaults to push-pull.
 
 required:
   - compatible
