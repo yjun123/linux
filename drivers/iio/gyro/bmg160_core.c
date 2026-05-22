@@ -17,6 +17,8 @@
 #include <linux/iio/events.h>
 #include <linux/iio/trigger_consumer.h>
 #include <linux/iio/triggered_buffer.h>
+#include <linux/interrupt.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include "bmg160.h"
@@ -1066,13 +1068,27 @@ static int bmg160_trigger_probe(struct bmg160_data *data)
 {
 	struct device *dev = regmap_get_device(data->regmap);
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	unsigned int irq_type;
+	bool irq_open_drain;
 	int ret;
+
+	irq_open_drain = device_property_read_bool(dev, "drive-open-drain");
+
+	irq_type = irq_get_trigger_type(data->irq);
+	if (irq_type != IRQF_TRIGGER_FALLING && irq_type != IRQF_TRIGGER_RISING) {
+		dev_err(dev,
+				"Invalid interrupt type 0x%x specified\n", irq_type);
+		return -EINVAL;
+	}
+
+	if (irq_open_drain)
+		irq_type |= IRQF_SHARED;
 
 	ret = devm_request_threaded_irq(dev,
 					data->irq,
 					bmg160_data_rdy_trig_poll,
 					bmg160_event_handler,
-					IRQ_TYPE_EDGE_RISING,
+					irq_type,
 					"bmg160_event",
 					indio_dev);
 	if (ret)
