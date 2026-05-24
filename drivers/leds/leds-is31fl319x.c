@@ -97,6 +97,7 @@ struct is31fl319x_chip {
 	struct is31fl319x_led {
 		struct is31fl319x_chip  *chip;
 		struct led_classdev     cdev;
+		struct fwnode_handle	*fwnode;
 		u32                     max_microamp;
 		bool                    configured;
 	} leds[IS31FL319X_MAX_LEDS];
@@ -387,6 +388,8 @@ static int is31fl319x_parse_child_fw(const struct device *dev,
 					is31->cdef->current_max);
 	}
 
+	led->fwnode = child;
+
 	return 0;
 }
 
@@ -541,6 +544,7 @@ static int is31fl319x_probe(struct i2c_client *client)
 				   is31fl3190_microamp_to_cs(dev, aggregated_led_microamp) << IS31FL3190_CURRENT_SHIFT);
 
 	for (i = 0; i < is31->cdef->num_leds; i++) {
+		struct led_init_data init_data = {};
 		struct is31fl319x_led *led = &is31->leds[i];
 
 		if (!led->configured)
@@ -549,7 +553,8 @@ static int is31fl319x_probe(struct i2c_client *client)
 		led->chip = is31;
 		led->cdev.brightness_set_blocking = is31->cdef->brightness_set;
 
-		err = devm_led_classdev_register(&client->dev, &led->cdev);
+		init_data.fwnode = led->fwnode;
+		err = devm_led_classdev_register_ext(&client->dev, &led->cdev, &init_data);
 		if (err < 0)
 			return err;
 	}
