@@ -31,8 +31,13 @@ static int rk808_clkout2_enable(struct clk_hw *hw, bool enable)
 							 struct rk808_clkout,
 							 clkout2_hw);
 
+	/*
+	 * For RK818, CLK32KOUT2_FUN must be 0 to output 32k clock.
+	 * This bit is not present on RK808.
+	 */
 	return regmap_update_bits(rk808_clkout->regmap, RK808_CLK32OUT_REG,
-				  CLK32KOUT2_EN, enable ? CLK32KOUT2_EN : 0);
+				  CLK32KOUT2_FUN | CLK32KOUT2_EN,
+				  enable ? CLK32KOUT2_EN : 0);
 }
 
 static int rk808_clkout2_prepare(struct clk_hw *hw)

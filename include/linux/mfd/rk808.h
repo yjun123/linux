@@ -1050,6 +1050,7 @@ enum rk806_dvs_mode {
 #define VB_LO_SEL_3500MV	(7 << 0)
 
 #define VOUT_LO_INT	BIT(0)
+#define CLK32KOUT2_FUN	BIT(1)
 #define CLK32KOUT2_EN	BIT(0)
 
 #define TEMP105C			0x08
