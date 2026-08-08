@@ -55,6 +55,7 @@ struct is31fl32xx_led_data {
 	struct led_classdev cdev;
 	u8 channel; /* 1-based, max priv->cdef->channels */
 	u32 max_microamp;
+	struct fwnode_handle *fwnode;
 	struct is31fl32xx_priv *priv;
 };
 
@@ -443,7 +444,6 @@ static int is31fl32xx_parse_dt(struct device *dev,
 	priv->pwm_22khz = of_property_read_bool(dev_of_node(dev), "issi,22khz-pwm");
 
 	for_each_available_child_of_node_scoped(dev_of_node(dev), child) {
-		struct led_init_data init_data = {};
 		struct is31fl32xx_led_data *led_data =
 			&priv->leds[priv->num_leds];
 		const struct is31fl32xx_led_data *other_led_data;
@@ -465,17 +465,32 @@ static int is31fl32xx_parse_dt(struct device *dev,
 			return -EINVAL;
 		}
 
-		init_data.fwnode = of_fwnode_handle(child);
+		led_data->fwnode = of_fwnode_handle(child);
+		priv->num_leds++;
+	}
+
+	return 0;
+}
+
+static int is31fl32xx_register_leds(struct device *dev,
+				    struct is31fl32xx_priv *priv)
+{
+	int i;
+
+	for (i = 0; i < priv->num_leds; i++) {
+		struct is31fl32xx_led_data *led_data = &priv->leds[i];
+		struct led_init_data init_data = {};
+		int ret;
+
+		init_data.fwnode = led_data->fwnode;
 
 		ret = devm_led_classdev_register_ext(dev, &led_data->cdev,
 						     &init_data);
 		if (ret) {
-			dev_err(dev, "Failed to register LED for %pOF: %d\n",
-				child, ret);
+			dev_err(dev, "Failed to register LED for channel %u: %d\n",
+				led_data->channel, ret);
 			return ret;
 		}
-
-		priv->num_leds++;
 	}
 
 	return 0;
@@ -617,6 +632,10 @@ static int is31fl32xx_probe(struct i2c_client *client)
 		return ret;
 
 	ret = is31fl32xx_init_regs(priv);
+	if (ret)
+		return ret;
+
+	ret = is31fl32xx_register_leds(dev, priv);
 	if (ret)
 		return ret;
 
