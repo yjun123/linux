@@ -570,6 +570,12 @@ static const struct is31fl32xx_chipdef is31fl3293_cdef = {
 	.pwm_update_value			= 0xc5,
 	.global_control_reg			= IS31FL32XX_REG_NONE,
 	.reset_reg				= IS31FL32XX_REG_NONE,
+	/*
+	 * The IS31FL3293 supports output frequency adjustment, but the
+	 * driver does not implement it yet. Leave unset (REG_NONE) to
+	 * avoid writing to an unknown register address.
+	 */
+	.output_frequency_setting_reg		= IS31FL32XX_REG_NONE,
 	.pwm_register_base			= 0x19,
 	.led_control_register_base		= IS31FL32XX_REG_NONE,
 	.brightness_steps			= 4096,
