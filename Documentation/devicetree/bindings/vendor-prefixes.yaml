@@ -1445,6 +1445,8 @@ patternProperties:
     description: Sandisk Corporation
   "^satoz,.*":
     description: Satoz International Co., Ltd
+  "^sayinfo,.*":
+    description: Hangzhou Sayinfo Intelligent Technology Co., Ltd
   "^sbs,.*":
     description: Smart Battery System
   "^schindler,.*":
