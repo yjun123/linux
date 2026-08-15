@@ -45,6 +45,15 @@
 		};
 	};
 
+	spk_amp: audio-amplifier {
+		compatible = "simple-audio-amplifier";
+		enable-gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_HIGH>;
+		vcc-supply = <&spk_amp_vcc>;
+		pinctrl-0 = <&spk_amp_enable_h>;
+		pinctrl-names = "default";
+		sound-name-prefix = "Speaker Amp";
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
@@ -84,6 +93,17 @@
 		default-brightness-level = <200>;
 	};
 
+	spk_amp_vcc: regulator-spk-amp-vcc {
+		compatible = "regulator-fixed";
+		regulator-name = "spk_amp_vcc";
+		gpio = <&gpio3 RK_PA0 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-boot-on;
+		pinctrl-0 = <&spk_amp_vcc_h>;
+		pinctrl-names = "default";
+	};
+
 	vccsys: regulator-vccsys {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc5v0_sys";
@@ -91,6 +111,42 @@
 		regulator-boot-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
+	};
+
+	rk809-sound {
+		compatible = "simple-audio-card";
+		pinctrl-0 = <&hp_det>;
+		pinctrl-names = "default";
+		simple-audio-card,aux-devs = <&spk_amp>;
+		simple-audio-card,hp-det-gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>;
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,name = "Analog RK809";
+		simple-audio-card,pin-switches = "Internal Speakers";
+		simple-audio-card,routing =
+			"Headphones", "HPOL",
+			"Headphones", "HPOR",
+			"Internal Speakers", "Speaker Amp OUTL",
+			"Internal Speakers", "Speaker Amp OUTR",
+			"Speaker Amp INL", "HPOL",
+			"Speaker Amp INR", "HPOR";
+		simple-audio-card,widgets =
+			"Headphone", "Headphones",
+			"Speaker", "Internal Speakers";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
+			format = "i2s";
+
+			cpu {
+				sound-dai = <&i2s1_2ch>;
+			};
+
+			codec {
+				sound-dai = <&rk809>;
+			};
+		};
 	};
 
 	sdio_pwrseq: sdio-pwrseq {
@@ -430,6 +486,11 @@
 	};
 };
 
+&i2s1_2ch {
+	pinctrl-0 = <&i2s1_2ch_sclk &i2s1_2ch_lrck &i2s1_2ch_sdo>;
+	status = "okay";
+};
+
 &io_domains {
 	vccio1-supply = <&vcc1v8_soc>;
 	vccio2-supply = <&vccio_sd>;
@@ -541,6 +602,12 @@
 		};
 	};
 
+	headphone {
+		hp_det: hp-det {
+			rockchip,pins = <3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
 	pmic {
 		pmic_int: pmic-int {
 			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
@@ -562,6 +629,16 @@
 	sdio-pwrseq {
 		wifi_enable_h: wifi-enable-h {
 			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	speaker {
+		spk_amp_enable_h: spk-amp-enable-h {
+			rockchip,pins = <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		spk_amp_vcc_h: spk-amp-vcc-h {
+			rockchip,pins = <3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
