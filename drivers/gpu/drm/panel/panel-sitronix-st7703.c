@@ -673,6 +673,50 @@ static const struct st7703_panel_desc gameforcechi_desc = {
 	.init_sequence = gameforcechi_init_sequence,
 };
 
+static void rns008_init_sequence(struct mipi_dsi_multi_context *dsi_ctx)
+{
+	/*
+	 * Init sequence was supplied by the panel vendor. The panel will
+	 * not respond to any commands until it is brought out of sleep
+	 * mode first.
+	 */
+	mipi_dsi_dcs_exit_sleep_mode_multi(dsi_ctx);
+	mipi_dsi_msleep(dsi_ctx, 250);
+
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x80, 0x8b);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x81, 0xff);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x82, 0xaf);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x83, 0xdf);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x84, 0x97);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x85, 0x9c);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x86, 0xb9);
+	mipi_dsi_generic_write_seq_multi(dsi_ctx, 0x87, 0x10);
+}
+
+static const struct drm_display_mode rns008_mode = {
+	.hdisplay	= 1024,
+	.hsync_start	= 1024 + 160,
+	.hsync_end	= 1024 + 160 + 10,
+	.htotal		= 1024 + 160 + 10 + 160,
+	.vdisplay	= 600,
+	.vsync_start	= 600 + 12,
+	.vsync_end	= 600 + 12 + 1,
+	.vtotal		= 600 + 12 + 1 + 23,
+	.clock		= 80000,
+	.flags		= DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
+	.width_mm	= 153,
+	.height_mm	= 85,
+};
+
+static const struct st7703_panel_desc rns008_desc = {
+	.mode = &rns008_mode,
+	.lanes = 4,
+	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+		      MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_MODE_LPM,
+	.format = MIPI_DSI_FMT_RGB888,
+	.init_sequence = rns008_init_sequence,
+};
+
 static int st7703_enable(struct drm_panel *panel)
 {
 	struct st7703 *ctx = panel_to_st7703(panel);
@@ -920,6 +964,7 @@ static const struct of_device_id st7703_of_match[] = {
 	{ .compatible = "powkiddy,rgb10max3-panel", .data = &rgb10max3_panel_desc },
 	{ .compatible = "powkiddy,rgb30-panel", .data = &rgb30panel_desc },
 	{ .compatible = "rocktech,jh057n00900", .data = &jh057n00900_panel_desc },
+	{ .compatible = "sayinfo,rns-008-panel", .data = &rns008_desc },
 	{ .compatible = "xingbangda,xbd599", .data = &xbd599_desc },
 	{ /* sentinel */ }
 };
