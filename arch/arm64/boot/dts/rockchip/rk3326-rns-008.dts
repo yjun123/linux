@@ -315,6 +315,12 @@
 					regulator-on-in-suspend;
 				};
 			};
+
+			vcc5v0_host: SWITCH_REG2 {
+				regulator-name = "vcc5v0_host";
+				regulator-always-on;
+				regulator-boot-on;
+			};
 		};
 	};
 };
@@ -356,9 +362,22 @@
 	status = "okay";
 };
 
+&u2phy {
+	status = "okay";
+
+	u2phy_otg: otg-port {
+		status = "okay";
+	};
+};
+
 &uart2 {
 	pinctrl-0 = <&uart2m0_xfer>;
 	pinctrl-names = "default";
+	status = "okay";
+};
+
+&usb20_otg {
+	dr_mode = "otg";
 	status = "okay";
 };
 
