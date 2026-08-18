@@ -30,6 +30,8 @@ properties:
       - powkiddy,rgb30-panel
       # Rocktech JH057N00900 5.5" 720x1440 TFT LCD panel
       - rocktech,jh057n00900
+      # SayInfo RNS-008 8" 1024x600 TFT LCD panel
+      - sayinfo,rns-008-panel
       # Xingbangda XBD599 5.99" 720x1440 TFT LCD panel
       - xingbangda,xbd599
 
