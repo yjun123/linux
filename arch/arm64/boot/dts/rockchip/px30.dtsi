@@ -435,6 +435,20 @@
 		status = "disabled";
 	};
 
+	pdm: pdm@ff0a0000 {
+		compatible = "rockchip,px30-pdm";
+		reg = <0x0 0xff0a0000 0x0 0x1000>;
+		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru SCLK_PDM>, <&cru HCLK_PDM>;
+		clock-names = "pdm_clk", "pdm_hclk";
+		dmas = <&dmac 24>;
+		dma-names = "rx";
+		resets = <&cru SRST_PDM>;
+		reset-names = "pdm-m";
+		#sound-dai-cells = <0>;
+		status = "disabled";
+	};
+
 	gic: interrupt-controller@ff131000 {
 		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
