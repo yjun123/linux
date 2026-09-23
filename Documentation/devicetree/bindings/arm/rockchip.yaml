@@ -1252,6 +1252,11 @@ properties:
               - rockchip,rv1126
               - rockchip,rv1109
 
+      - description: Sunniwell Z96A (Type-C charging)
+        items:
+          - const: sunniwell,z96a-typec
+          - const: rockchip,rk3568
+
       - description: Theobroma Systems PX30-Cobra
         items:
           - enum:
