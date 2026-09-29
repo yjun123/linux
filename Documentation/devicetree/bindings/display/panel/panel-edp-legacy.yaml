@@ -42,6 +42,8 @@ properties:
       - boe,nv133fhm-n61
         # BOE NV133FHM-N62 13.3" FHD (1920x1080) TFT LCD Panel
       - boe,nv133fhm-n62
+        # BOE NV140FHM-N43 14.0" 1920x1080 eDP panel
+      - boe,nv140fhm-n43
         # BOE NV140FHM-N49 14.0" FHD a-Si FT panel
       - boe,nv140fhmn49
         # FriendlyELEC HD702E 800x1280 LCD panel

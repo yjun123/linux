@@ -1233,6 +1233,35 @@ static const struct panel_desc boe_nv133fhm_n61 = {
 	},
 };
 
+static const struct drm_display_mode boe_nv140fhm_n43_modes[] = {
+	{
+		.clock = 139800,
+		.hdisplay = 1920,
+		.hsync_start = 1920 + 48,
+		.hsync_end = 1920 + 48 + 32,
+		.htotal = 1920 + 48 + 32 + 80,
+		.vdisplay = 1080,
+		.vsync_start = 1080 + 3,
+		.vsync_end = 1080 + 3 + 5,
+		.vtotal = 1080 + 3 + 5 + 32,
+	},
+};
+
+static const struct panel_desc boe_nv140fhm_n43 = {
+	.modes = boe_nv140fhm_n43_modes,
+	.num_modes = ARRAY_SIZE(boe_nv140fhm_n43_modes),
+	.bpc = 6,
+	.size = {
+		.width = 309,
+		.height = 174,
+	},
+	.delay = {
+		.hpd_absent = 200,
+		.enable = 50,
+		.unprepare = 160,
+	},
+};
+
 static const struct drm_display_mode boe_nv140fhmn49_modes[] = {
 	{
 		.clock = 148500,
@@ -1690,6 +1719,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "boe,nv133fhm-n62",
 		.data = &boe_nv133fhm_n61,
+	}, {
+		.compatible = "boe,nv140fhm-n43",
+		.data = &boe_nv140fhm_n43,
 	}, {
 		.compatible = "boe,nv140fhmn49",
 		.data = &boe_nv140fhmn49,
