@@ -15,6 +15,7 @@ properties:
     enum:
       - rockchip,rk3288-dp
       - rockchip,rk3399-edp
+      - rockchip,rk3568-edp
       - rockchip,rk3588-edp
 
   clocks:
@@ -26,7 +27,7 @@ properties:
     items:
       - const: dp
       - const: pclk
-      - const: grf
+      - enum: [ grf, hclk ]
 
   power-domains:
     maxItems: 1
