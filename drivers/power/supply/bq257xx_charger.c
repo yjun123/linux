@@ -87,6 +87,7 @@ struct bq257xx_chg {
 	u32 vbat_max;
 	u32 ichg_max;
 	u32 vsys_min;
+	const char *manufacturer;
 };
 
 /**
@@ -960,7 +961,7 @@ static int bq257xx_get_charger_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_MANUFACTURER:
-		val->strval = "Texas Instruments";
+		val->strval = pdata->manufacturer;
 		break;
 
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -1241,6 +1242,15 @@ static int bq257xx_charger_probe(struct platform_device *pdev)
 		break;
 	default:
 		return dev_err_probe(dev, -EINVAL, "Unknown chip type\n");
+	}
+
+	switch (bq->type) {
+	case SC8886S:
+		pdata->manufacturer = "Southchip Semiconductor";
+		break;
+	default:
+		pdata->manufacturer = "Texas Instruments";
+		break;
 	}
 
 	platform_set_drvdata(pdev, pdata);
