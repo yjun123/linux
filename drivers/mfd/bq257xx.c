@@ -92,6 +92,7 @@ static int bq257xx_probe(struct i2c_client *client)
 
 	switch (ddata->type) {
 	case BQ25703A:
+	case SC8886S:
 		rcfg = &bq25703_regmap_config;
 		break;
 	case BQ25792:
@@ -121,6 +122,7 @@ static int bq257xx_probe(struct i2c_client *client)
 static const struct i2c_device_id bq257xx_i2c_ids[] = {
 	{ "bq25703a", BQ25703A },
 	{ "bq25792", BQ25792 },
+	{ "sc8886s", SC8886S },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, bq257xx_i2c_ids);
@@ -128,6 +130,7 @@ MODULE_DEVICE_TABLE(i2c, bq257xx_i2c_ids);
 static const struct of_device_id bq257xx_of_match[] = {
 	{ .compatible = "ti,bq25703a", .data = (void *)BQ25703A },
 	{ .compatible = "ti,bq25792", .data = (void *)BQ25792 },
+	{ .compatible = "southchip,sc8886s", .data = (void *)SC8886S },
 	{}
 };
 MODULE_DEVICE_TABLE(of, bq257xx_of_match);
