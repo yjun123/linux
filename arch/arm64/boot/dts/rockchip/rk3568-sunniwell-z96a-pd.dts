@@ -6,6 +6,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include <dt-bindings/soc/rockchip,vop2.h>
@@ -30,6 +31,83 @@
 		num-interpolated-steps = <200>;
 		power-supply = <&vcc3v3_sys>;
 		pwms = <&pwm9 0 25000 0>;
+	};
+
+	battery: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <5125000>;
+		charge-term-current-microamp = <300000>;
+		constant-charge-current-max-microamp = <1000000>;
+		constant-charge-voltage-max-microvolt = <8404000>;
+		factory-internal-resistance-micro-ohms = <150000>;
+		precharge-current-microamp = <180000>;
+		precharge-upper-limit-microvolt = <7200000>;
+		voltage-max-design-microvolt = <8404000>;
+		voltage-min-design-microvolt = <6600000>;
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 = <8362000 100>, <8158000 95>,
+				      <8030000 90>, <7918000 85>,
+				      <7812000 80>, <7714000 75>,
+				      <7618000 70>, <7532000 65>,
+				      <7448000 60>, <7364000 55>,
+				      <7292000 50>, <7250000 45>,
+				      <7218000 40>, <7190000 35>,
+				      <7162000 30>, <7122000 25>,
+				      <7064000 20>, <7000000 15>,
+				      <6922000 10>, <6840000 5>,
+				      <6600000 0>;
+	};
+
+	battery_thermistor: battery-thermistor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&saradc 4>;
+		io-channel-names = "sensor-channel";
+		/*
+		 * Battery NTC thermistor (10 kOhm at 25 °C) on SARADC channel 4,
+		 * with a 10 kOhm pull-up to the 1.8 V reference. The lookup table
+		 * maps the IIO processed voltage (millivolts) to temperature, derived
+		 * from the vendor SC8886 ntc_table (-20 °C .. 60 °C, 1 °C step).
+		 */
+		temperature-lookup-table = <
+			(-20000) 1629	(-19000) 1621	(-18000) 1612	(-17000) 1603
+			(-16000) 1592	(-15000) 1580	(-14000) 1570	(-13000) 1560
+			(-12000) 1548	(-11000) 1535	(-10000) 1521	(-9000) 1510
+			(-8000) 1497	(-7000) 1484	(-6000) 1469	(-5000) 1453
+			(-4000) 1439	(-3000) 1425	(-2000) 1410	(-1000) 1393
+			0 1375		1000 1360	2000 1344	3000 1327
+			4000 1308	5000 1289	6000 1272	7000 1255
+			8000 1237	9000 1217	10000 1196	11000 1178
+			12000 1160	13000 1141	14000 1120	15000 1098
+			16000 1080	17000 1062	18000 1042	19000 1021
+			20000 999	21000 981	22000 962	23000 942
+			24000 921	25000 900	26000 882	27000 864
+			28000 845	29000 825	30000 804	31000 787
+			32000 769	33000 751	34000 732	35000 713
+			36000 697	37000 680	38000 663	39000 646
+			40000 628	41000 613	42000 598	43000 582
+			44000 566	45000 550	46000 537	47000 523
+			48000 509	49000 495	50000 480	51000 468
+			52000 456	53000 443	54000 430	55000 417
+			56000 407	57000 396	58000 385	59000 374
+			60000 362
+		>;
+	};
+
+	thermal-zones {
+		battery_thermal: battery-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+			thermal-sensors = <&battery_thermistor>;
+
+			trips {
+				battery_alert: battery-alert {
+					temperature = <60000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
 	};
 
 	chosen: chosen {
@@ -70,6 +148,32 @@
 			};
 		};
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_power: led-power {
+			gpios = <&gpio0 RK_PD3 GPIO_ACTIVE_HIGH>;
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_WHITE>;
+			linux,default-trigger = "bq257xx-charger-online";
+		};
+
+		led_charging: led-charging {
+			gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
+			function = LED_FUNCTION_CHARGING;
+			color = <LED_COLOR_ID_RED>;
+			linux,default-trigger = "bq257xx-fgu-charging";
+		};
+
+		led_full: led-full {
+			gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+			function = LED_FUNCTION_CHARGING;
+			color = <LED_COLOR_ID_GREEN>;
+			linux,default-trigger = "bq257xx-fgu-full";
+		};
+	};
+
 
 	rk809-sound {
 		compatible = "simple-audio-card";
@@ -600,9 +704,20 @@
 	};
 
 	/*
-	 * Southchip SC8886 battery charger @ 0x6b (I2C0): no mainline
-	 * driver, not enabled (charging handled by vendor firmware only).
+	 * Southchip SC8886S battery charger @ 0x6b (I2C0), a register-compatible
+	 * second source for the TI BQ25703A; driven by the mainline bq257xx driver.
+	 * Interrupt is on GPIO0_C2 (active low), per the vendor firmware.
 	 */
+	sc8886s: charger@6b {
+		compatible = "southchip,sc8886s";
+		reg = <0x6b>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PC2 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sc8886s_int>;
+		input-current-limit-microamp = <3000000>;
+		monitored-battery = <&battery>;
+	};
 };
 
 &i2c1 {
@@ -658,6 +773,12 @@
 	display {
 		vcc3v3_lcd0_n_en: vcc3v3-lcd0-n-en {
 			rockchip,pins = <0 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	charger {
+		sc8886s_int: sc8886s-int {
+			rockchip,pins = <0 RK_PC2 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
