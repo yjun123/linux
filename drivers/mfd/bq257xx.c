@@ -75,6 +75,7 @@ static const struct regmap_config bq25792_regmap_config = {
 static const struct mfd_cell cells[] = {
 	MFD_CELL_NAME("bq257xx-regulator"),
 	MFD_CELL_NAME("bq257xx-charger"),
+	MFD_CELL_NAME("bq257xx-fgu"),
 };
 
 static int bq257xx_probe(struct i2c_client *client)
