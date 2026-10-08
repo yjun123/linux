@@ -631,6 +631,10 @@ static irqreturn_t bq257xx_irq_handler_thread(int irq, void *private)
 	return IRQ_HANDLED;
 }
 
+static char *bq257xx_supplied_to[] = {
+	"bq257xx-fgu",
+};
+
 static const struct power_supply_desc bq257xx_power_supply_desc = {
 	.name = "bq257xx-charger",
 	.type = POWER_SUPPLY_TYPE_USB,
@@ -738,6 +742,8 @@ static int bq257xx_charger_probe(struct platform_device *pdev)
 
 	psy_cfg.drv_data = pdata;
 	psy_cfg.fwnode = dev_fwnode(dev);
+	psy_cfg.supplied_to = bq257xx_supplied_to;
+	psy_cfg.num_supplicants = ARRAY_SIZE(bq257xx_supplied_to);
 
 	pdata->charger = devm_power_supply_register(dev,
 						    &bq257xx_power_supply_desc,

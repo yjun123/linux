@@ -822,6 +822,18 @@ config CHARGER_BQ257XX
 	  Say Y to enable support for the TI BQ257XX family of battery
 	  charging integrated circuits.
 
+config FUEL_GAUGE_BQ257XX
+	tristate "TI BQ257XX battery fuel gauge"
+	depends on MFD_BQ257XX
+	select ADC_BATTERY_HELPER
+	help
+	  Say Y to enable support for the battery fuel gauge in the TI
+	  BQ257XX family of charging integrated circuits.
+
+	  This driver measures the battery voltage and current through the
+	  integrated ADC and reports the state of charge using the OCV
+	  table of the monitored battery.
+
 config CHARGER_BQ25890
 	tristate "TI BQ25890 battery charger driver"
 	depends on I2C
