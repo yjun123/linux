@@ -507,6 +507,7 @@
 enum bq257xx_type {
 	BQ25703A = 1,
 	BQ25792,
+	SC8886S,
 };
 
 struct bq257xx_device {
