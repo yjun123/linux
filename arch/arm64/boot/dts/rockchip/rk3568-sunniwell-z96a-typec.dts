@@ -95,6 +95,19 @@
 		};
 	};
 
+	pdm_sound: pdm-sound {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "es7202-mic";
+		simple-audio-card,format = "pdm";
+
+		simple-audio-card,cpu {
+			sound-dai = <&pdm>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&es7202_mic>;
+		};
+	};
+
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		clocks = <&rk809 1>;
@@ -589,6 +602,24 @@
 
 &i2c3 {
 	status = "okay";
+
+	es7202_mic: codec@30 {
+		compatible = "everest,es7202";
+		reg = <0x30>;
+		#sound-dai-cells = <0>;
+	};
+
+	es7202_aec: codec@31 {
+		compatible = "everest,es7202";
+		reg = <0x31>;
+		#sound-dai-cells = <0>;
+	};
+
+	es7202_headset: codec@32 {
+		compatible = "everest,es7202";
+		reg = <0x32>;
+		#sound-dai-cells = <0>;
+	};
 };
 
 &i2s0_8ch {
@@ -602,6 +633,16 @@
 		     &i2s1m0_sdi0
 		     &i2s1m0_sdo0>;
 
+	status = "okay";
+};
+
+&pdm {
+	pinctrl-0 = <&pdmm0_clk1
+		     &pdmm0_sdi1
+		     &pdmm0_sdi2
+		     &pdmm0_sdi3>;
+	/* ES7202 mic is on sdi1 (channel 0), aec is on sdi2 (channel 1), headset on sdi3 (channel 2) */
+	rockchip,path-map = <1 2 3 0>;
 	status = "okay";
 };
 
