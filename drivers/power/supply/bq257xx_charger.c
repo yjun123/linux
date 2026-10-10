@@ -568,13 +568,13 @@ static int bq257xx_property_is_writeable(struct power_supply *psy,
  * bq257xx_external_power_changed() - Handler for external power change
  * @psy: Power supply data
  *
- * When the external power into the charger is changed, check the USB
- * type so that it can be reported. Additionally, update the max input
- * current and max charging current to the value reported if it is a
- * USB PD charger, otherwise use the default value. Note that each time
- * a charger is removed the max charge current register is erased, so
- * it must be set again each time the input changes or the device will
- * not charge.
+ * Refresh the charger state and reprogram the charge parameters on every
+ * input change. The charge current register is erased each time the
+ * input is removed, so it must be written again on every insertion or
+ * the device will not charge. A registered supplier (e.g. a TCPM power
+ * supply) is only consulted to refine the USB type and the PD-negotiated
+ * input current; a plain DC adapter has no supplier and keeps the default
+ * input current limit.
  */
 static void bq257xx_external_power_changed(struct power_supply *psy)
 {
@@ -585,41 +585,38 @@ static void bq257xx_external_power_changed(struct power_supply *psy)
 
 	pdata->chip->bq257xx_get_state(pdata);
 
+	/*
+	 * AC_STAT is the authoritative "adapter present" signal, whether the
+	 * source is a plain DC adapter or a USB-C/PD source.
+	 */
+	if (!pdata->online)
+		goto notify;
+
 	pdata->supplied = power_supply_am_i_supplied(pdata->charger);
-	if (pdata->supplied < 0)
-		return;
-
-	if (pdata->supplied == 0)
-		goto out;
-
-	ret = power_supply_get_property_from_supplier(psy,
-						      POWER_SUPPLY_PROP_USB_TYPE,
-						      &val);
-	if (ret)
-		return;
-
-	pdata->usb_type = val.intval;
-
-	if ((pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD) ||
-	    (pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD_DRP) ||
-	    (pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD_PPS)) {
+	if (pdata->supplied > 0) {
 		ret = power_supply_get_property_from_supplier(psy,
-							      POWER_SUPPLY_PROP_CURRENT_MAX,
-							      &val);
-		if (ret)
-			return;
+						POWER_SUPPLY_PROP_USB_TYPE,
+						&val);
+		if (!ret) {
+			pdata->usb_type = val.intval;
 
-		if (val.intval)
-			imax = val.intval;
+			if ((pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD) ||
+			    (pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD_DRP) ||
+			    (pdata->usb_type == POWER_SUPPLY_USB_TYPE_PD_PPS)) {
+				ret = power_supply_get_property_from_supplier(psy,
+						POWER_SUPPLY_PROP_CURRENT_MAX,
+						&val);
+				if (!ret && val.intval)
+					imax = val.intval;
+			}
+		}
 	}
 
-	if (pdata->supplied) {
-		pdata->chip->bq257xx_set_ichg(pdata, pdata->ichg_max);
-		pdata->chip->bq257xx_set_iindpm(pdata, imax);
-		pdata->chip->bq257xx_set_vbatreg(pdata, pdata->vbat_max);
-	}
+	pdata->chip->bq257xx_set_ichg(pdata, pdata->ichg_max);
+	pdata->chip->bq257xx_set_iindpm(pdata, imax);
+	pdata->chip->bq257xx_set_vbatreg(pdata, pdata->vbat_max);
 
-out:
+notify:
 	power_supply_changed(psy);
 }
 
