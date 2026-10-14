@@ -25,6 +25,7 @@ properties:
       - enum:
           - canaan,k230-emmc
           - canaan,k230-sdio
+          - hisilicon,hi3519dv500-dwcmshc
           - hpe,gsc-dwcmshc
           - rockchip,rk3568-dwcmshc
           - rockchip,rk3588-dwcmshc
@@ -97,6 +98,12 @@ properties:
       Phandle to the HPE GXP SoC system register block (syscon) and
       offset of the MSHCCS register used to configure clock
       synchronisation for HS200 tuning.
+
+  hisilicon,crg-syscon:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description: Phandle to the CRG (clock and reset generator) syscon of the
+                 Hi3519DV500 SoC, used to configure the controller clock mux,
+                 sampling phases and DLL reference clock.
 
 required:
   - compatible
@@ -205,7 +212,16 @@ allOf:
       required:
         - eswin,hsp-sp-csr
         - eswin,drive-impedance-ohms
-    else:
+
+  - if:
+      properties:
+        compatible:
+          not:
+            contains:
+              enum:
+                - eswin,eic7700-dwcmshc
+                - hisilicon,hi3519dv500-dwcmshc
+    then:
       properties:
         resets:
           minItems: 5
@@ -217,6 +233,38 @@ allOf:
             - const: axi
             - const: block
             - const: timer
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            const: hisilicon,hi3519dv500-dwcmshc
+    then:
+      properties:
+        clocks:
+          minItems: 1
+          maxItems: 2
+        clock-names:
+          minItems: 1
+          items:
+            - const: core
+            - const: bus
+        resets:
+          minItems: 4
+          maxItems: 4
+        reset-names:
+          items:
+            - const: crg_reset
+            - const: crg_tx
+            - const: crg_rx
+            - const: dll_reset
+      required:
+        - hisilicon,crg-syscon
+        - resets
+        - reset-names
+    else:
+      properties:
+        hisilicon,crg-syscon: false
 
   - if:
       properties:
@@ -250,6 +298,24 @@ examples:
       clocks = <&cru 17>, <&cru 18>;
       clock-names = "core", "bus";
       bus-width = <8>;
+      #address-cells = <1>;
+      #size-cells = <0>;
+    };
+  - |
+    mmc@10020000 {
+      compatible = "hisilicon,hi3519dv500-dwcmshc";
+      reg = <0x10020000 0x1000>;
+      interrupts = <0 50 0x4>;
+      clocks = <&crg 97>, <&crg 98>;
+      clock-names = "core", "bus";
+      resets = <&crg 0x34c0 16>, <&crg 0x34c0 17>,
+               <&crg 0x34c0 18>, <&crg 0x34c4 1>;
+      reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+      hisilicon,crg-syscon = <&crg>;
+      bus-width = <8>;
+      non-removable;
+      no-sd;
+      no-sdio;
       #address-cells = <1>;
       #size-cells = <0>;
     };
