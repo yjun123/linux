@@ -476,6 +476,15 @@
 			#reset-cells = <2>;
 		};
 
+		wdt: watchdog@11030000 {
+			compatible = "arm,sp805", "arm,primecell";
+			reg = <0x11030000 0x1000>;
+			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_FIXED_3M>, <&crg HI3519DV500_FIXED_3M>;
+			clock-names = "wdog_clk", "apb_pclk";
+			status = "disabled";
+		};
+
 		uart0: serial@11040000 {
 			compatible = "arm,pl011", "arm,primecell";
 			reg = <0x11040000 0x1000>;
