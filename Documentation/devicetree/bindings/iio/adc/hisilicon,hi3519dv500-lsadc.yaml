@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/iio/adc/hisilicon,hi3519dv500-lsadc.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 LSADC
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description:
+  The Hi3519DV500 Low Speed ADC provides four 10 bit voltage input
+  channels.  A conversion is started on demand and the converted
+  value is reported with an interrupt.
+
+properties:
+  compatible:
+    const: hisilicon,hi3519dv500-lsadc
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  clock-names:
+    const: lsadc
+
+  resets:
+    maxItems: 1
+
+  reset-names:
+    const: lsadc
+
+  vref-supply: true
+
+  "#io-channel-cells":
+    const: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - resets
+  - vref-supply
+  - "#io-channel-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/hi3519dv500-clock.h>
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+    adc@11100000 {
+        compatible = "hisilicon,hi3519dv500-lsadc";
+        reg = <0x11100000 0x1000>;
+        interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&crg HI3519DV500_LSADC_CLK>;
+        clock-names = "lsadc";
+        resets = <&crg 0x46c0 0>;
+        reset-names = "lsadc";
+        vref-supply = <&ldo7>;
+        #io-channel-cells = <1>;
+    };
+...
