@@ -540,6 +540,31 @@
 			status = "disabled";
 		};
 
+		usb: usb@10320000 {
+			compatible = "hisilicon,hi3519dv500-dwc3";
+			reg = <0x10320000 0x10000>, <0x17a40000 0x5000>,
+			      <0x179f0010 0x4>;
+			reg-names = "ctrl", "peri", "pinout";
+			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_USB30_CTRL0_CLK>;
+			clock-names = "ctrl-clk";
+			phys = <&usb2phy0>, <&usb3phy0>;
+			phy-names = "usb2-phy", "usb3-phy";
+			dr_mode = "otg";
+			usb-role-switch;
+			role-switch-default-mode = "peripheral";
+			maximum-speed = "super-speed";
+			snps,dis-u1-entry-quirk;
+			snps,dis-u2-entry-quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis_u3_susphy_quirk;
+			snps,tx-thr-num-pkt = /bits/ 8 <2>;
+			snps,tx-max-burst = /bits/ 8 <8>;
+			snps,rx-thr-num-pkt = /bits/ 8 <2>;
+			snps,rx-max-burst = /bits/ 8 <4>;
+			status = "disabled";
+		};
+
 		timer0: timer@11000000 {
 			compatible = "arm,sp804", "arm,primecell";
 			reg = <0x11000000 0x1000>;
@@ -1126,6 +1151,24 @@
 			compatible = "hisilicon,hi3519dv500-rtc";
 			reg = <0x11110000 0x10000>;
 			interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		usb2phy0: usb2-phy@17350000 {
+			compatible = "hisilicon,hi3519dv500-usb2-phy";
+			reg = <0x17350000 0x1000>, <0x101e0124 0x4>;
+			reg-names = "phy", "trim-otp";
+			clocks = <&crg HI3519DV500_USB2_PHY0_CLK>;
+			hisilicon,u2phy-trim = <0x0a33c42b 0x0035180f>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3phy0: usb3-phy@17361000 {
+			compatible = "hisilicon,hi3519dv500-usb3-phy";
+			reg = <0x17361000 0x1000>;
+			clocks = <&crg HI3519DV500_USB3_PHY0_CLK>;
+			#phy-cells = <0>;
 			status = "disabled";
 		};
 
