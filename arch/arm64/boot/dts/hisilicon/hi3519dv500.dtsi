@@ -247,6 +247,38 @@
 				drive-strength = <0>;
 			};
 
+			/*
+			 * Variants for boards that wire only D0..D3.  The pads
+			 * that D4..D7 would take (0x24, 0x28, 0x2c and 0x30)
+			 * stay free for the SPI1 and I2C controllers.
+			 */
+			mmc0_4bit_data_pins: mmc0-4bit-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>;
+				bias-pull-up;
+				drive-strength = <2>;
+			};
+
+			mmc0_4bit_hs_data_pins: mmc0-4bit-hs-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>;
+				drive-strength = <3>;
+			};
+
+			mmc0_4bit_hs200_data_pins: mmc0-4bit-hs200-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>;
+				drive-strength = <12>;
+			};
+
 			sfc_pins: sfc-pins {
 				pinmux = <HI3519DV500_PINMUX(0x34, 0)>,
 					 <HI3519DV500_PINMUX(0x38, 0)>,
@@ -267,6 +299,64 @@
 			pwm0_out3m2_pins: pwm0-out3m2-pins {
 				pinmux = <HI3519DV500_PINMUX(0x2c, 4)>;
 			};
+		};
+
+		mmc0: mmc@10020000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10020000 0x1000>;
+			interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC0_CLK>, <&crg HI3519DV500_MMC0_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x34c0 16>, <&crg 0x34c0 17>,
+				 <&crg 0x34c0 18>, <&crg 0x34c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			max-frequency = <150000000>;
+			status = "disabled";
+		};
+
+		mmc1: mmc@10030000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10030000 0x1000>;
+			interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC1_CLK>, <&crg HI3519DV500_MMC1_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x35c0 16>, <&crg 0x35c0 17>,
+				 <&crg 0x35c0 18>, <&crg 0x35c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			sd-uhs-sdr12;
+			sd-uhs-sdr25;
+			sd-uhs-sdr50;
+			sd-uhs-sdr104;
+			full-pwr-cycle;
+			disable-wp;
+			no-mmc;
+			no-sdio;
+			max-frequency = <150000000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdio0_clk_pins &sdio0_cmd_pins &sdio0_data_pins>;
+			status = "disabled";
+		};
+
+		mmc2: mmc@10040000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10040000 0x1000>;
+			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC2_CLK>, <&crg HI3519DV500_MMC2_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x36c0 16>, <&crg 0x36c0 17>,
+				 <&crg 0x36c0 18>, <&crg 0x36c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			max-frequency = <150000000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdio1_clk_pins &sdio1_cmd_pins &sdio1_data_pins>;
+			status = "disabled";
 		};
 
 		ioconfig1: ioconfig@10260000 {
@@ -502,7 +592,7 @@
 		};
 
 		crg: clock-controller@11010000 {
-			compatible = "hisilicon,hi3519dv500-clock";
+			compatible = "hisilicon,hi3519dv500-clock", "syscon";
 			reg = <0x11010000 0x10000>;
 			#clock-cells = <1>;
 			#reset-cells = <2>;
