@@ -40,6 +40,20 @@
 	status = "okay";
 };
 
+&tsensor {
+	status = "okay";
+};
+
+/ {
+	thermal-zones {
+		cpu-thermal {
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&tsensor 0>;
+		};
+	};
+};
+
 &i2c3 {
 	pinctrl-0 = <&i2c3_sda_pins &i2c3_scl_pins>;
 	clock-frequency = <400000>;
