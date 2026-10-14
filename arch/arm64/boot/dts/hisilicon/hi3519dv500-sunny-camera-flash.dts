@@ -5,6 +5,8 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/pinctrl-hi3519dv500.h>
 #include "hi3519dv500.dtsi"
 
 / {
@@ -28,4 +30,54 @@
 
 &uart0 {
 	status = "okay";
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&gpio6 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&spi3 {
+	pinctrl-0 = <&spi3_pins &imu_int_pins>;
+	cs-gpios = <&gpio6 4 GPIO_ACTIVE_LOW>, <&gpio5 3 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	bmi088-accel@0 {
+		compatible = "bosch,bmi088-accel";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&gpio7>;
+		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "INT2";
+	};
+
+	gyroscope@1 {
+		compatible = "bosch,bmi088_gyro";
+		reg = <1>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&gpio7>;
+		interrupts = <0 IRQ_TYPE_EDGE_RISING>;
+	};
+};
+
+&ioconfig1 {
+	spi3_pins: spi3-pins {
+		pinmux = <HI3519DV500_PINMUX(0x88, 3)>,	/* SPI3_SCLK */
+			 <HI3519DV500_PINMUX(0x7c, 3)>,	/* SPI3_SDI */
+			 <HI3519DV500_PINMUX(0x98, 3)>,	/* SPI3_SDO */
+			 <HI3519DV500_PINMUX(0x78, 1)>,	/* GPIO5_3, gyro CS */
+			 <HI3519DV500_PINMUX(0x9c, 1)>;	/* GPIO6_4, accel CS */
+	};
+
+	imu_int_pins: imu-int-pins {
+		pinmux = <HI3519DV500_PINMUX(0xac, 0)>,	/* GPIO7_0, gyro INT */
+			 <HI3519DV500_PINMUX(0xb4, 0)>;	/* GPIO7_2, accel INT */
+	};
 };
