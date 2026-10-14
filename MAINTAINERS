@@ -11753,6 +11753,13 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/rtc/hisilicon,hi3519dv500-rtc.yaml
 F:	drivers/rtc/rtc-hi3519dv500.c
 
+HISILICON HI3519DV500 PWM DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-pwm@lists.infradead.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/pwm/hisilicon,hi3519dv500-pwm.yaml
+F:	drivers/pwm/pwm-hi3519dv500.c
+
 HISILICON LPC BUS DRIVER
 M:	Jay Fang <f.fangjian@huawei.com>
 S:	Maintained
