@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/usb/hisilicon,hi3519dv500-dwc3.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 DWC3 USB SoC controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The Hi3519DV500 embeds a Synopsys DWC3 USB IP core together with
+  the controller glue logic in the peripheral control block.  The
+  controller works in dual role mode: the role is switched through
+  the generic USB role switch class, with no OTG ID or VBUS
+  detection inputs available.
+
+allOf:
+  - $ref: snps,dwc3-common.yaml#
+  - $ref: usb-drd.yaml#
+  - $ref: usb.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,hi3519dv500-dwc3
+
+  reg:
+    items:
+      - description: DWC3 core registers
+      - description: peripheral control block used by the glue logic
+      - description: USB pinout control register
+
+  reg-names:
+    items:
+      - const: ctrl
+      - const: peri
+      - const: pinout
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    items:
+      - description: controller clock
+
+  clock-names:
+    const: ctrl-clk
+
+  phys:
+    items:
+      - description: USB2 PHY
+      - description: USB3 PHY
+
+  phy-names:
+    items:
+      - const: usb2-phy
+      - const: usb3-phy
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - interrupts
+  - clocks
+  - clock-names
+  - phys
+  - phy-names
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    usb@10320000 {
+        compatible = "hisilicon,hi3519dv500-dwc3";
+        reg = <0x10320000 0x10000>, <0x17a40000 0x5000>,
+              <0x179f0010 0x4>;
+        reg-names = "ctrl", "peri", "pinout";
+        interrupts = <0 60 4>;
+        clocks = <&crg 128>;
+        clock-names = "ctrl-clk";
+        phys = <&usb2phy0>, <&usb3phy0>;
+        phy-names = "usb2-phy", "usb3-phy";
+        dr_mode = "otg";
+        usb-role-switch;
+        role-switch-default-mode = "peripheral";
+        maximum-speed = "super-speed";
+        snps,tx-thr-num-pkt = /bits/ 8 <2>;
+        snps,tx-max-burst = /bits/ 8 <8>;
+        snps,rx-thr-num-pkt = /bits/ 8 <2>;
+        snps,rx-max-burst = /bits/ 8 <4>;
+    };
+...
