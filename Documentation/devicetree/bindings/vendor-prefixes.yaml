@@ -1620,6 +1620,8 @@ patternProperties:
     description: Sundance DSP Inc.
   "^sunplus,.*":
     description: Sunplus Technology Co., Ltd.
+  "^sunny,.*":
+    description: Zhejiang Sunny Optical Intelligent Technology Co., Ltd.
   "^SUNW,.*":
     description: Sun Microsystems, Inc
   "^supermicro,.*":
