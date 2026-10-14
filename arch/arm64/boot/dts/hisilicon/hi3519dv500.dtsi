@@ -1,0 +1,837 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/*
+ * dts file for Hisilicon Hi3519DV500 SoC
+ *
+ * Copyright (c) 2020-2023 HiSilicon Technologies Co., Ltd.
+ */
+
+#include <dt-bindings/clock/hi3519dv500-clock.h>
+#include <dt-bindings/pinctrl/pinctrl-hi3519dv500.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	compatible = "hisilicon,hi3519dv500";
+	interrupt-parent = <&gic>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+	};
+
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			compatible = "arm,cortex-a55";
+			device_type = "cpu";
+			reg = <0x0 0x0>;
+			enable-method = "psci";
+		};
+
+		cpu1: cpu@100 {
+			compatible = "arm,cortex-a55";
+			device_type = "cpu";
+			reg = <0x0 0x100>;
+			enable-method = "psci";
+		};
+	};
+
+	gic: interrupt-controller@12400000 {
+		compatible = "arm,gic-v3";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		interrupt-controller;
+		reg = <0x0 0x12400000 0x0 0x10000>,	/* GICD */
+		      <0x0 0x12440000 0x0 0x140000>;	/* GICR */
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+		always-on;
+	};
+
+	pmu {
+		compatible = "arm,armv8-pmuv3";
+		interrupts = <GIC_PPI 7 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+	};
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x0 0x0 0x0 0xffffffff>;
+
+		ioconfig0: ioconfig@eff0000 {
+			compatible = "hisilicon,hi3519dv500-ioconfig0";
+			reg = <0x0eff0000 0x10000>;
+
+			/* Neutral mux-only defaults; boards tune the electrical
+			 * configuration through their own groups.  Signal order:
+			 * RXD,TXD / SDA,SCL / SCLK,SDI,SDO,CSN.
+			 */
+			uart0_pins: uart0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x54, 1)>,
+					 <HI3519DV500_PINMUX(0x58, 1)>;
+			};
+
+			i2c5_pins: i2c5-pins {
+				pinmux = <HI3519DV500_PINMUX(0x28, 2)>,
+					 <HI3519DV500_PINMUX(0x24, 2)>;
+			};
+
+			i2c6_pins: i2c6-pins {
+				pinmux = <HI3519DV500_PINMUX(0x30, 2)>,
+					 <HI3519DV500_PINMUX(0x2c, 2)>;
+			};
+
+			spi1_pins: spi1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x24, 1)>,
+					 <HI3519DV500_PINMUX(0x2c, 1)>,
+					 <HI3519DV500_PINMUX(0x28, 1)>,
+					 <HI3519DV500_PINMUX(0x30, 1)>;
+			};
+
+			/* The eMMC pads keep their power-on pull mode: CLK and
+			 * DS pull-down, CMD, DATA and RST pull-up.
+			 */
+			mmc0_clk_pins: mmc0-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 1)>;
+				bias-pull-down;
+				drive-strength = <3>;
+			};
+
+			mmc0_cmd_pins: mmc0-cmd-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 1)>;
+				bias-pull-up;
+				drive-strength = <2>;
+			};
+
+			/* D0..D3 use function 1, D4..D7 function 3 */
+			mmc0_data_pins: mmc0-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>,
+					 <HI3519DV500_PINMUX(0x24, 3)>,
+					 <HI3519DV500_PINMUX(0x28, 3)>,
+					 <HI3519DV500_PINMUX(0x2c, 3)>,
+					 <HI3519DV500_PINMUX(0x30, 3)>;
+				bias-pull-up;
+				drive-strength = <2>;
+			};
+
+			mmc0_rst_pins: mmc0-rst-pins {
+				pinmux = <HI3519DV500_PINMUX(0x4c, 1)>;
+				bias-pull-up;
+				drive-strength = <0>;
+			};
+
+			mmc0_ds_pins: mmc0-ds-pins {
+				pinmux = <HI3519DV500_PINMUX(0x50, 1)>;
+				bias-pull-down;
+				drive-strength = <0>;
+			};
+
+			/* The speed states only override the drive strength,
+			 * matching the vendor tuning: CMD shares the DATA level
+			 * in HS/HS200 while all lines share one level in HS400.
+			 */
+			mmc0_hs_clk_pins: mmc0-hs-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 1)>;
+				drive-strength = <4>;
+			};
+
+			/* CMD and D0..D7 share one level in HS */
+			mmc0_hs_data_pins: mmc0-hs-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>,
+					 <HI3519DV500_PINMUX(0x24, 3)>,
+					 <HI3519DV500_PINMUX(0x28, 3)>,
+					 <HI3519DV500_PINMUX(0x2c, 3)>,
+					 <HI3519DV500_PINMUX(0x30, 3)>;
+				drive-strength = <3>;
+			};
+
+			mmc0_hs200_clk_pins: mmc0-hs200-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 1)>;
+				drive-strength = <15>;
+			};
+
+			/* CMD and D0..D7 share one level in HS200 */
+			mmc0_hs200_data_pins: mmc0-hs200-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>,
+					 <HI3519DV500_PINMUX(0x24, 3)>,
+					 <HI3519DV500_PINMUX(0x28, 3)>,
+					 <HI3519DV500_PINMUX(0x2c, 3)>,
+					 <HI3519DV500_PINMUX(0x30, 3)>;
+				drive-strength = <12>;
+			};
+
+			mmc0_hs200_ds_pins: mmc0-hs200-ds-pins {
+				pinmux = <HI3519DV500_PINMUX(0x50, 1)>;
+				drive-strength = <0>;
+			};
+
+			/* All lines share one level in HS400 */
+			mmc0_hs400_pins: mmc0-hs400-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 1)>,
+					 <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>,
+					 <HI3519DV500_PINMUX(0x24, 3)>,
+					 <HI3519DV500_PINMUX(0x28, 3)>,
+					 <HI3519DV500_PINMUX(0x2c, 3)>,
+					 <HI3519DV500_PINMUX(0x30, 3)>;
+				drive-strength = <15>;
+			};
+
+			mmc0_hs400_ds_pins: mmc0-hs400-ds-pins {
+				pinmux = <HI3519DV500_PINMUX(0x50, 1)>;
+				drive-strength = <0>;
+			};
+
+			sfc_pins: sfc-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 0)>,
+					 <HI3519DV500_PINMUX(0x38, 0)>,
+					 <HI3519DV500_PINMUX(0x3c, 0)>,
+					 <HI3519DV500_PINMUX(0x40, 0)>,
+					 <HI3519DV500_PINMUX(0x44, 0)>,
+					 <HI3519DV500_PINMUX(0x48, 0)>;
+			};
+
+			pwm0_out3m0_pins: pwm0-out3m0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x00, 1)>;
+			};
+
+			pwm0_out3m1_pins: pwm0-out3m1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x28, 4)>;
+			};
+
+			pwm0_out3m2_pins: pwm0-out3m2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x2c, 4)>;
+			};
+		};
+
+		ioconfig1: ioconfig@10260000 {
+			compatible = "hisilicon,hi3519dv500-ioconfig1";
+			reg = <0x10260000 0x10000>;
+
+			uart1_pins: uart1-pins {
+				pinmux = <HI3519DV500_PINMUX(0xd8, 1)>,
+					 <HI3519DV500_PINMUX(0xdc, 1)>;
+			};
+
+			uart2_pins: uart2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x00, 1)>,
+					 <HI3519DV500_PINMUX(0x04, 1)>;
+			};
+
+			uart3_pins: uart3-pins {
+				pinmux = <HI3519DV500_PINMUX(0xe4, 2)>,
+					 <HI3519DV500_PINMUX(0xe0, 2)>;
+			};
+
+			uart4_pins: uart4-pins {
+				pinmux = <HI3519DV500_PINMUX(0x08, 2)>,
+					 <HI3519DV500_PINMUX(0x0c, 2)>;
+			};
+
+			uart5_pins: uart5-pins {
+				pinmux = <HI3519DV500_PINMUX(0x80, 6)>,
+					 <HI3519DV500_PINMUX(0x84, 6)>;
+			};
+
+			i2c0_pins: i2c0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x6c, 1)>,
+					 <HI3519DV500_PINMUX(0x70, 1)>;
+			};
+
+			/* i2c1, i2c2 and spi3 have three pad options each,
+			 * named m0..m2 in ascending register offset order
+			 */
+			i2c1m0_pins: i2c1m0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x00, 5)>,
+					 <HI3519DV500_PINMUX(0x04, 5)>;
+			};
+
+			i2c1m1_pins: i2c1m1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x30, 2)>,
+					 <HI3519DV500_PINMUX(0x34, 2)>;
+			};
+
+			i2c1m2_pins: i2c1m2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x94, 3)>,
+					 <HI3519DV500_PINMUX(0x90, 3)>;
+			};
+
+			i2c2m0_pins: i2c2m0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x08, 5)>,
+					 <HI3519DV500_PINMUX(0x0c, 5)>;
+			};
+
+			i2c2m1_pins: i2c2m1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x14, 2)>,
+					 <HI3519DV500_PINMUX(0x20, 2)>;
+			};
+
+			i2c2m2_pins: i2c2m2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x80, 3)>,
+					 <HI3519DV500_PINMUX(0x84, 3)>;
+			};
+
+			spi2_pins: spi2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x04, 3)>,
+					 <HI3519DV500_PINMUX(0x08, 3)>,
+					 <HI3519DV500_PINMUX(0x0c, 3)>,
+					 <HI3519DV500_PINMUX(0x00, 3)>;
+			};
+
+			spi3m0_pins: spi3m0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x3c, 2)>,
+					 <HI3519DV500_PINMUX(0x2c, 2)>,
+					 <HI3519DV500_PINMUX(0x28, 2)>,
+					 <HI3519DV500_PINMUX(0x40, 2)>,
+					 <HI3519DV500_PINMUX(0x44, 2)>;
+			};
+
+			spi3m1_pins: spi3m1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x5c, 3)>,
+					 <HI3519DV500_PINMUX(0x60, 3)>,
+					 <HI3519DV500_PINMUX(0x64, 3)>,
+					 <HI3519DV500_PINMUX(0x58, 3)>,
+					 <HI3519DV500_PINMUX(0x68, 3)>;
+			};
+
+			spi3m2_pins: spi3m2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x88, 3)>,
+					 <HI3519DV500_PINMUX(0x7c, 3)>,
+					 <HI3519DV500_PINMUX(0x98, 3)>,
+					 <HI3519DV500_PINMUX(0x78, 3)>,
+					 <HI3519DV500_PINMUX(0x9c, 3)>;
+			};
+
+			sdio0_cmd_pins: sdio0-cmd-pins {
+				pinmux = <HI3519DV500_PINMUX(0xb8, 1)>;
+			};
+
+			sdio0_clk_pins: sdio0-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0xcc, 1)>;
+			};
+
+			sdio0_data_pins: sdio0-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0xbc, 1)>,
+					 <HI3519DV500_PINMUX(0xc0, 1)>,
+					 <HI3519DV500_PINMUX(0xc4, 1)>,
+					 <HI3519DV500_PINMUX(0xc8, 1)>;
+			};
+
+			sdio1_cmd_pins: sdio1-cmd-pins {
+				pinmux = <HI3519DV500_PINMUX(0xb4, 1)>;
+			};
+
+			sdio1_clk_pins: sdio1-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0xb0, 1)>;
+			};
+
+			sdio1_data_pins: sdio1-data-pins {
+				pinmux = <HI3519DV500_PINMUX(0xa0, 1)>,
+					 <HI3519DV500_PINMUX(0xa4, 1)>,
+					 <HI3519DV500_PINMUX(0xa8, 1)>,
+					 <HI3519DV500_PINMUX(0xac, 1)>;
+			};
+
+			pwm2_out0_pins: pwm2-out0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x58, 5)>;
+			};
+
+			pwm2_out1_pins: pwm2-out1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x64, 5)>;
+			};
+
+			pwm2_out2_pins: pwm2-out2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x60, 5)>;
+			};
+
+			pwm2_out3_pins: pwm2-out3-pins {
+				pinmux = <HI3519DV500_PINMUX(0x5c, 5)>;
+			};
+
+			pwm2_out4_pins: pwm2-out4-pins {
+				pinmux = <HI3519DV500_PINMUX(0x68, 5)>;
+			};
+
+			rgmii_pins: rgmii-pins {
+				pinmux = <HI3519DV500_PINMUX(0x28, 1)>,
+					 <HI3519DV500_PINMUX(0x2c, 1)>,
+					 <HI3519DV500_PINMUX(0x30, 1)>,
+					 <HI3519DV500_PINMUX(0x34, 1)>,
+					 <HI3519DV500_PINMUX(0x38, 1)>,
+					 <HI3519DV500_PINMUX(0x3c, 1)>,
+					 <HI3519DV500_PINMUX(0x40, 1)>,
+					 <HI3519DV500_PINMUX(0x44, 1)>,
+					 <HI3519DV500_PINMUX(0x48, 1)>,
+					 <HI3519DV500_PINMUX(0x4c, 1)>,
+					 <HI3519DV500_PINMUX(0x50, 1)>,
+					 <HI3519DV500_PINMUX(0x54, 1)>;
+			};
+
+			mdio_pins: mdio-pins {
+				pinmux = <HI3519DV500_PINMUX(0x1c, 1)>,
+					 <HI3519DV500_PINMUX(0x20, 1)>;
+			};
+
+			ephy_pins: ephy-pins {
+				pinmux = <HI3519DV500_PINMUX(0x10, 1)>,
+					 <HI3519DV500_PINMUX(0x14, 1)>;
+			};
+		};
+
+		dma: dma-controller@10280000 {
+			compatible = "hisilicon,hi3519dv500-edmacv310";
+			reg = <0x10280000 0x1000>;
+			interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_EDMAC_CLK>,
+				 <&crg HI3519DV500_EDMAC_AXICLK>;
+			clock-names = "apb_pclk", "axi_aclk";
+			resets = <&crg 0x2a80 0>;
+			reset-names = "dma-reset";
+			dma-requests = <32>;
+			dma-channels = <8>;
+			#dma-cells = <2>;
+			status = "disabled";
+		};
+
+		timer0: timer@11000000 {
+			compatible = "arm,sp804", "arm,primecell";
+			reg = <0x11000000 0x1000>;
+			interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>;
+			clock-names = "timer1", "timer2", "apb_pclk";
+			status = "disabled";
+		};
+
+		timer1: timer@11001000 {
+			compatible = "arm,sp804", "arm,primecell";
+			reg = <0x11001000 0x1000>;
+			interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>;
+			clock-names = "timer1", "timer2", "apb_pclk";
+			status = "disabled";
+		};
+
+		timer2: timer@11002000 {
+			compatible = "arm,sp804", "arm,primecell";
+			reg = <0x11002000 0x1000>;
+			interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>;
+			clock-names = "timer1", "timer2", "apb_pclk";
+			status = "disabled";
+		};
+
+		timer3: timer@11003000 {
+			compatible = "arm,sp804", "arm,primecell";
+			reg = <0x11003000 0x1000>;
+			interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>,
+				 <&crg HI3519DV500_FIXED_3M>;
+			clock-names = "timer1", "timer2", "apb_pclk";
+			status = "disabled";
+		};
+
+		crg: clock-controller@11010000 {
+			compatible = "hisilicon,hi3519dv500-clock";
+			reg = <0x11010000 0x10000>;
+			#clock-cells = <1>;
+			#reset-cells = <2>;
+		};
+
+		uart0: serial@11040000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11040000 0x1000>;
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART0_CLK>, <&crg HI3519DV500_UART0_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x4180 0>;
+			dmas = <&dma 20 20>, <&dma 21 21>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart0_pins>;
+			status = "disabled";
+		};
+
+		uart1: serial@11041000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11041000 0x1000>;
+			interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART1_CLK>, <&crg HI3519DV500_UART1_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x4188 0>;
+			dmas = <&dma 22 22>, <&dma 23 23>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pins>;
+			status = "disabled";
+		};
+
+		uart2: serial@11042000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11042000 0x1000>;
+			interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART2_CLK>, <&crg HI3519DV500_UART2_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x4190 0>;
+			dmas = <&dma 24 24>, <&dma 25 25>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart2_pins>;
+			status = "disabled";
+		};
+
+		uart3: serial@11043000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11043000 0x1000>;
+			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART3_CLK>, <&crg HI3519DV500_UART3_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x4198 0>;
+			dmas = <&dma 26 26>, <&dma 27 27>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart3_pins>;
+			status = "disabled";
+		};
+
+		uart4: serial@11044000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11044000 0x1000>;
+			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART4_CLK>, <&crg HI3519DV500_UART4_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x41a0 0>;
+			dmas = <&dma 28 28>, <&dma 29 29>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart4_pins>;
+			status = "disabled";
+		};
+
+		uart5: serial@11045000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x11045000 0x1000>;
+			interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_UART5_CLK>, <&crg HI3519DV500_UART5_CLK>;
+			clock-names = "uartclk", "apb_pclk";
+			resets = <&crg 0x41a8 0>;
+			dmas = <&dma 30 30>, <&dma 31 31>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart5_pins>;
+			status = "disabled";
+		};
+
+		gpio0: gpio@11090000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11090000 0x1000>;
+			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio1: gpio@11091000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11091000 0x1000>;
+			interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio2: gpio@11092000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11092000 0x1000>;
+			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio3: gpio@11093000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11093000 0x1000>;
+			interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio4: gpio@11094000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11094000 0x1000>;
+			interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio5: gpio@11095000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11095000 0x1000>;
+			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio6: gpio@11096000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11096000 0x1000>;
+			interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio7: gpio@11097000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11097000 0x1000>;
+			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio8: gpio@11098000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11098000 0x1000>;
+			interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio9: gpio@11099000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x11099000 0x1000>;
+			interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio10: gpio@1109a000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x1109a000 0x1000>;
+			interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio11: gpio@1109b000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x1109b000 0x1000>;
+			interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio12: gpio@1109c000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x1109c000 0x1000>;
+			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio13: gpio@1109d000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x1109d000 0x1000>;
+			interrupts = <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		gpio14: gpio@1109e000 {
+			compatible = "arm,pl061", "arm,primecell";
+			reg = <0x1109e000 0x1000>;
+			interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			clocks = <&crg HI3519DV500_FIXED_50M>;
+			clock-names = "apb_pclk";
+			status = "disabled";
+		};
+
+		ioconfig2: ioconfig@179f0000 {
+			compatible = "hisilicon,hi3519dv500-ioconfig2";
+			reg = <0x179f0000 0x10000>;
+
+			i2c3_pins: i2c3-pins {
+				pinmux = <HI3519DV500_PINMUX(0x28, 2)>,
+					 <HI3519DV500_PINMUX(0x2c, 2)>;
+			};
+
+			i2c4_pins: i2c4-pins {
+				pinmux = <HI3519DV500_PINMUX(0x30, 2)>,
+					 <HI3519DV500_PINMUX(0x34, 2)>;
+			};
+
+			i2c7_pins: i2c7-pins {
+				pinmux = <HI3519DV500_PINMUX(0x00, 2)>,
+					 <HI3519DV500_PINMUX(0x04, 2)>;
+			};
+
+			spi0_pins: spi0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x34, 1)>,
+					 <HI3519DV500_PINMUX(0x2c, 1)>,
+					 <HI3519DV500_PINMUX(0x30, 1)>,
+					 <HI3519DV500_PINMUX(0x28, 1)>,
+					 <HI3519DV500_PINMUX(0x24, 1)>;
+			};
+
+			pwm0_out0_pins: pwm0-out0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x1c, 1)>;
+			};
+
+			pwm0_out1_pins: pwm0-out1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x20, 1)>;
+			};
+
+			pwm0_out2_pins: pwm0-out2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x70, 2)>;
+			};
+
+			pwm0_out4_pins: pwm0-out4-pins {
+				pinmux = <HI3519DV500_PINMUX(0x54, 2)>;
+			};
+
+			pwm0_out5_pins: pwm0-out5-pins {
+				pinmux = <HI3519DV500_PINMUX(0x24, 4)>;
+			};
+
+			pwm1_out0_pins: pwm1-out0-pins {
+				pinmux = <HI3519DV500_PINMUX(0x38, 4)>;
+			};
+
+			pwm1_out1_pins: pwm1-out1-pins {
+				pinmux = <HI3519DV500_PINMUX(0x3c, 4)>;
+			};
+
+			pwm1_out2_pins: pwm1-out2-pins {
+				pinmux = <HI3519DV500_PINMUX(0x40, 4)>;
+			};
+
+			pwm1_out3_pins: pwm1-out3-pins {
+				pinmux = <HI3519DV500_PINMUX(0x44, 4)>;
+			};
+
+			pwm1_out4_pins: pwm1-out4-pins {
+				pinmux = <HI3519DV500_PINMUX(0x58, 2)>;
+			};
+
+			pwm1_out5_pins: pwm1-out5-pins {
+				pinmux = <HI3519DV500_PINMUX(0xa4, 2)>;
+			};
+
+			lsadc_pins: lsadc-pins {
+				pinmux = <HI3519DV500_PINMUX(0x00, 0)>,
+					 <HI3519DV500_PINMUX(0x04, 0)>,
+					 <HI3519DV500_PINMUX(0x08, 0)>,
+					 <HI3519DV500_PINMUX(0x0c, 0)>;
+			};
+		};
+	};
+};
