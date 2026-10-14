@@ -11746,6 +11746,13 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/i2c/hisilicon,hi3519dv500-i2c.yaml
 F:	drivers/i2c/busses/i2c-hi3519dv500.c
 
+HISILICON HI3519DV500 LSADC DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-iio@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/iio/adc/hisilicon,hi3519dv500-lsadc.yaml
+F:	drivers/iio/adc/hi3519dv500-lsadc.c
+
 HISILICON HI3519DV500 RTC DRIVER
 M:	Jun Yan <jerrysteve1101@gmail.com>
 L:	linux-rtc@vger.kernel.org

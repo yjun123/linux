@@ -800,6 +800,17 @@ config GEHC_PMC_ADC
 	  To compile this driver as a module, choose M here: the module will be
 	  called gehc-pmc-adc.
 
+config HI3519DV500_LSADC
+	tristate "HiSilicon Hi3519DV500 LSADC support"
+	depends on ARCH_HISI || COMPILE_TEST
+	depends on HAS_IOMEM
+	help
+	  Say yes here to build support for the Low Speed ADC found on
+	  the HiSilicon Hi3519DV500 SoC.
+
+	  This driver can also be built as a module. If so, the module will
+	  be called hi3519dv500-lsadc.
+
 config HI8435
 	tristate "Holt Integrated Circuits HI-8435 threshold detector"
 	select IIO_TRIGGERED_EVENT
