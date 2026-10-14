@@ -37,6 +37,20 @@ config HISI_FEMAC
 	  The FEMAC exchanges data with the CPU, and supports
 	  the energy efficient Ethernet (EEE).
 
+config HISI_GMAC_V5
+	tristate "HiSilicon GEMAC v5 Ethernet MAC support"
+	depends on HAS_IOMEM
+	select PHYLIB
+	select FIXED_PHY
+	select RESET_CONTROLLER
+	help
+	  This selects the HiSilicon GEMAC v5 Ethernet MAC device,
+	  found on several HiSilicon vision SoCs such as Hi3516DV500
+	  and Hi3519DV500.  The GEMAC v5 connects to an external PHY
+	  through the GEMAC MDIO bus controller and supports RGMII,
+	  MII and RMII interface modes with hardware TSO, receive
+	  checksum offload and RSS.
+
 config HIP04_ETH
 	tristate "HISILICON P04 Ethernet support"
 	depends on HAS_IOMEM	# For MFD_SYSCON

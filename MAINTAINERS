@@ -11739,6 +11739,13 @@ F:	Documentation/devicetree/bindings/pinctrl/hisilicon,hi3519dv500-ioconfig.yaml
 F:	drivers/pinctrl/hisilicon/pinctrl-hi3519dv500.c
 F:	include/dt-bindings/pinctrl/pinctrl-hi3519dv500.h
 
+HISILICON HI3519DV500 ETHERNET DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	netdev@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/net/hisilicon,gmac-v5.yaml
+F:	drivers/net/ethernet/hisilicon/hisi_gmac_v5.c
+
 HISILICON HI3519DV500 I2C DRIVER
 M:	Jun Yan <jerrysteve1101@gmail.com>
 L:	linux-i2c@vger.kernel.org
