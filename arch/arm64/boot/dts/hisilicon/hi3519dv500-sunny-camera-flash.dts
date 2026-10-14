@@ -36,6 +36,10 @@
 	status = "okay";
 };
 
+&rtc {
+	status = "okay";
+};
+
 &i2c3 {
 	pinctrl-0 = <&i2c3_sda_pins &i2c3_scl_pins>;
 	clock-frequency = <400000>;
