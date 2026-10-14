@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/dma/hisilicon,hi3519dv500-edmacv310.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 EDMAC v310 DMA controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The Hi3519DV500 embeds the EDMAC v310 DMA controller, the third
+  generation of the HiSilicon EDMAC family.  The controller provides
+  eight physical channels over a 64 bit AXI interface, serves up to
+  32 peripheral request lines, and splits the channels into two
+  classes: one pool dedicated to memory to memory transfers and one
+  pool serving the peripheral slave requests, with the memory to
+  memory class taking priority when a physical channel becomes free.
+
+allOf:
+  - $ref: dma-controller.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,hi3519dv500-edmacv310
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    items:
+      - description: APB interface clock
+      - description: AXI interface clock
+
+  clock-names:
+    items:
+      - const: apb_pclk
+      - const: axi_aclk
+
+  resets:
+    maxItems: 1
+
+  reset-names:
+    const: dma-reset
+
+  dma-requests:
+    description: Number of peripheral request lines
+
+  dma-channels:
+    description: Number of physical channels
+
+  '#dma-cells':
+    const: 2
+    description: |
+      The first cell is the DMA request line number, which is also
+      written to the request selector field of the channel config
+      register.  The second cell is the request multiplexer value of
+      the requesting peripheral, which is ignored on this SoC and
+      must match the first cell.
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - clock-names
+  - resets
+  - reset-names
+  - dma-requests
+  - dma-channels
+  - '#dma-cells'
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    dma-controller@10280000 {
+        compatible = "hisilicon,hi3519dv500-edmacv310";
+        reg = <0x10280000 0x1000>;
+        interrupts = <0 58 4>;
+        clocks = <&crg 69>, <&crg 70>;
+        clock-names = "apb_pclk", "axi_aclk";
+        resets = <&crg 0x2a80 0>;
+        reset-names = "dma-reset";
+        dma-requests = <32>;
+        dma-channels = <8>;
+        #dma-cells = <2>;
+    };
+...
