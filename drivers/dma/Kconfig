@@ -376,6 +376,20 @@ config K3_DMA
 	  Support the DMA engine for Hisilicon K3 platform
 	  devices.
 
+config HISI_EDMACV310
+	tristate "HiSilicon EDMAC v310 DMA support"
+	depends on ARCH_HISI || COMPILE_TEST
+	depends on HAS_IOMEM
+	select DMA_ENGINE
+	select DMA_VIRTUAL_CHANNELS
+	help
+	  Support for the EDMAC v310 DMA controller on HiSilicon vision
+	  SoCs such as Hi3519DV500.  The controller provides eight physical
+	  channels over a 64 bit AXI interface, serves up to 32 peripheral
+	  request lines, and splits the channels into a pool dedicated to
+	  memory to memory transfers and a pool serving the peripheral
+	  slave requests.
+
 config LPC18XX_DMAMUX
 	bool "NXP LPC18xx/43xx DMA MUX for PL080"
 	depends on ARCH_LPC18XX || COMPILE_TEST

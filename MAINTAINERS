@@ -11724,6 +11724,13 @@ F:	Documentation/devicetree/bindings/clock/hisilicon,hi3519dv500-clock.yaml
 F:	drivers/clk/hisilicon/clk-hi3519dv500.c
 F:	include/dt-bindings/clock/hi3519dv500-clock.h
 
+HISILICON HI3519DV500 DMA ENGINE DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	dmaengine@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/dma/hisilicon,hi3519dv500-edmacv310.yaml
+F:	drivers/dma/hisi-edmacv310.c
+
 HISILICON HI3519DV500 PINCTRL DRIVER
 M:	Jun Yan <jerrysteve1101@gmail.com>
 L:	linux-gpio@vger.kernel.org
