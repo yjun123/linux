@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/pinctrl/hisilicon,hi3519dv500-ioconfig.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 pin controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The Hi3519DV500 pin control registers are spread over three register
+  blocks (ioconfig0/1/2), each managing a disjoint set of pads.  Every pad
+  owns a 32-bit IO config register with the following layout:
+
+    bit  3:0  pin function select
+    bit  7:4  drive strength level
+    bit  9:8  pull control (encoding is domain specific)
+    bit  10   slew rate (0 = fast, 1 = slow)
+
+  Pads are grouped in IO domains which differ in the availability of
+  pull and slew control and in the number of drive strength levels:
+
+    EMMC_IO: combo pull (0x0 = off, 0x1 = down, 0x3 = up),
+             drive levels 0..15, slew rate available
+    IO2:     split pull (bit 9 = down, bit 8 = up),
+             drive levels 0..3, slew rate available
+    IO6:     combo pull, drive levels 0..7, slew rate available
+    IO7_1:   no pull control, drive levels 0..3, no slew control
+    IO7_2:   no pull control, drive levels 0..1, no slew control
+
+  The drive-strength property takes the raw level index of the pad's IO
+  domain; the datasheet does not provide a mA mapping for the levels.
+
+properties:
+  compatible:
+    enum:
+      - hisilicon,hi3519dv500-ioconfig0
+      - hisilicon,hi3519dv500-ioconfig1
+      - hisilicon,hi3519dv500-ioconfig2
+
+  reg:
+    maxItems: 1
+
+patternProperties:
+  '-pins$':
+    type: object
+    additionalProperties: false
+    allOf:
+      - $ref: pincfg-node.yaml#
+      - $ref: pinmux-node.yaml#
+
+    properties:
+      pinmux:
+        description: |
+          An array of pin mux settings, one entry per pad.  Each entry
+          encodes the pad's IO config register offset within the block
+          and the function number, using the HI3519DV500_PINMUX macro
+          from include/dt-bindings/pinctrl/pinctrl-hi3519dv500.h.
+
+      bias-disable: true
+
+      bias-pull-up: true
+
+      bias-pull-down: true
+
+      drive-strength:
+        description:
+          Drive strength level index of the pad's IO domain.
+
+      slew-rate:
+        description:
+          Slew rate control (0 = fast, 1 = slow).
+
+    required:
+      - pinmux
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/pinctrl/pinctrl-hi3519dv500.h>
+
+    ioconfig@eff0000 {
+        compatible = "hisilicon,hi3519dv500-ioconfig0";
+        reg = <0x0eff0000 0x10000>;
+
+        uart0-pins {
+            pinmux = <HI3519DV500_PINMUX(0x054, 1)>,
+                     <HI3519DV500_PINMUX(0x058, 1)>;
+            bias-pull-up;
+            drive-strength = <3>;
+        };
+    };
+...
