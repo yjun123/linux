@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/hisilicon,gmac-v5.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon GEMAC v5 Ethernet MAC
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The GEMAC v5 is the fifth generation of the HiSilicon Gigabit
+  Ethernet MAC.  It is found on several HiSilicon vision SoCs such as
+  Hi3516DV500 and Hi3519DV500 and connects to an external PHY through
+  a separate MDIO bus controller.  The controller supports the RGMII,
+  MII and RMII PHY interface modes.
+
+allOf:
+  - $ref: ethernet-controller.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,gmac-v5
+
+  reg:
+    items:
+      - description: MAC control register set
+      - description: MAC interface control register (MACIF)
+
+  reg-names:
+    items:
+      - const: control
+      - const: macif
+
+  interrupts:
+    minItems: 4
+    maxItems: 4
+    description: |
+      One interrupt per receive queue, in queue order.  The first
+      interrupt also serves the transmit completion path, while the
+      remaining three are the RSS receive queues.
+
+  clocks:
+    minItems: 1
+    maxItems: 2
+    description: |
+      The MAC core clock is mandatory.  The MAC interface clock is
+      optional and is only needed by the SoCs that gate it separately.
+
+  clock-names:
+    minItems: 1
+    items:
+      - const: gmac_clk
+      - const: macif_clk
+
+  resets:
+    maxItems: 2
+
+  reset-names:
+    items:
+      - const: port_reset
+      - const: macif_reset
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - interrupts
+  - clocks
+  - clock-names
+  - resets
+  - reset-names
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    mdio@102903c0 {
+            compatible = "hisilicon,gemac-mdio";
+            reg = <0x102903c0 0x20>;
+            clocks = <&crg 103>;
+            resets = <&crg 0x37cc 0>;
+            reset-names = "phy_reset";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            ethphy: ethernet-phy@1 {
+                    compatible = "ethernet-phy-id0141.0e90";
+                    reg = <1>;
+            };
+    };
+
+    ethernet@10290000 {
+            compatible = "hisilicon,gmac-v5";
+            reg = <0x10290000 0x1000>, <0x1029300c 0x4>;
+            reg-names = "control", "macif";
+            interrupts = <0 54 4>, <0 55 4>, <0 56 4>, <0 57 4>;
+            clocks = <&crg 103>, <&crg 104>;
+            clock-names = "gmac_clk", "macif_clk";
+            resets = <&crg 0x37c4 0>, <&crg 0x37c0 0>;
+            reset-names = "port_reset", "macif_reset";
+            phy-handle = <&ethphy>;
+            phy-mode = "rgmii-id";
+    };
+...

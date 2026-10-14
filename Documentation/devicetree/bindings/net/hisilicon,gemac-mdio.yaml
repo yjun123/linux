@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/hisilicon,gemac-mdio.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon GEMAC MDIO bus controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The GEMAC MDIO bus controller is the MDIO master used by the
+  HiSilicon GEMAC family Ethernet MACs to talk to the external PHY.
+  It is instantiated as a separate platform device and may carry an
+  external PHY reset line.
+
+allOf:
+  - $ref: mdio.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,gemac-mdio
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+    description: the MDIO bus functional clock
+
+  resets:
+    maxItems: 1
+    description: the external PHY reset line
+
+  reset-names:
+    const: phy_reset
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - resets
+  - reset-names
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    mdio@102903c0 {
+            compatible = "hisilicon,gemac-mdio";
+            reg = <0x102903c0 0x20>;
+            clocks = <&crg 103>;
+            resets = <&crg 0x37cc 0>;
+            reset-names = "phy_reset";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            ethernet-phy@1 {
+                    compatible = "ethernet-phy-id0141.0e90";
+                    reg = <1>;
+            };
+    };
+...
