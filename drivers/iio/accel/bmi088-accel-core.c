@@ -11,11 +11,16 @@
 #include <linux/bitfield.h>
 #include <linux/delay.h>
 #include <linux/iio/iio.h>
+#include <linux/iio/buffer.h>
 #include <linux/iio/sysfs.h>
+#include <linux/iio/trigger.h>
+#include <linux/iio/trigger_consumer.h>
+#include <linux/iio/triggered_buffer.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/unaligned.h>
@@ -36,6 +41,7 @@
 
 #define BMI088_ACCEL_REG_INT_MAP_DATA			0x58
 #define BMI088_ACCEL_INT_MAP_DATA_BIT_INT1_DRDY		BIT(2)
+#define BMI088_ACCEL_INT_MAP_DATA_BIT_INT2_DRDY		BIT(6)
 #define BMI088_ACCEL_INT_MAP_DATA_BIT_INT2_FWM		BIT(5)
 
 #define BMI088_ACCEL_REG_INT1_IO_CONF			0x53
@@ -84,6 +90,16 @@ enum bmi088_accel_axis {
 	AXIS_Z,
 };
 
+enum bmi088_accel_int_pin {
+	BMI088_ACCEL_PIN_INT1,
+	BMI088_ACCEL_PIN_INT2,
+};
+
+static const char * const bmi088_accel_int_pin_names[] = {
+	[BMI088_ACCEL_PIN_INT1] = "INT1",
+	[BMI088_ACCEL_PIN_INT2] = "INT2",
+};
+
 static const int bmi088_sample_freqs[] = {
 	12, 500000,
 	25, 0,
@@ -126,6 +142,14 @@ struct bmi088_accel_data {
 	struct regmap *regmap;
 	const struct bmi088_accel_chip_info *chip_info;
 	u8 buffer[2] __aligned(IIO_DMA_MINALIGN); /* shared DMA safe buffer */
+	struct {
+		__le16 chans[3];
+		aligned_s64 timestamp;
+	} scan;
+	struct iio_trigger *dready_trig;
+	int irq;
+	enum bmi088_accel_int_pin irq_pin;
+	bool dready_trigger_on;
 };
 
 static const struct regmap_range bmi088_volatile_ranges[] = {
@@ -494,6 +518,113 @@ static const unsigned long bmi088_accel_scan_masks[] = {
 	0
 };
 
+static int bmi088_accel_set_new_data_irq(struct bmi088_accel_data *data,
+					 bool status)
+{
+	unsigned int mask;
+
+	/* Map the data ready interrupt to the selected INT1/INT2 pin */
+	mask = (data->irq_pin == BMI088_ACCEL_PIN_INT1) ?
+		BMI088_ACCEL_INT_MAP_DATA_BIT_INT1_DRDY :
+		BMI088_ACCEL_INT_MAP_DATA_BIT_INT2_DRDY;
+
+	return regmap_update_bits(data->regmap, BMI088_ACCEL_REG_INT_MAP_DATA,
+				  mask, status ? mask : 0);
+}
+
+static int bmi088_accel_config_irq_pin(struct bmi088_accel_data *data)
+{
+	struct device *dev = regmap_get_device(data->regmap);
+	unsigned int i, reg, mask;
+
+	/*
+	 * Determine which interrupt pin is wired by reading the
+	 * interrupt-names property. If not specified, use INT1 as default.
+	 */
+	data->irq_pin = BMI088_ACCEL_PIN_INT1;
+	for (i = 0; i < ARRAY_SIZE(bmi088_accel_int_pin_names); i++) {
+		if (fwnode_irq_get_byname(dev_fwnode(dev),
+					  bmi088_accel_int_pin_names[i]) > 0) {
+			data->irq_pin = i;
+			break;
+		}
+	}
+
+	reg = (data->irq_pin == BMI088_ACCEL_PIN_INT1) ?
+		BMI088_ACCEL_REG_INT1_IO_CONF : BMI088_ACCEL_REG_INT2_IO_CONF;
+
+	/* Enable the interrupt output driver, active high */
+	mask = BMI088_ACCEL_INT1_IO_CONF_BIT_ENABLE_OUT |
+	       BMI088_ACCEL_INT1_IO_CONF_BIT_LVL;
+
+	return regmap_update_bits(data->regmap, reg, mask, mask);
+}
+
+static irqreturn_t bmi088_accel_trigger_handler(int irq, void *p)
+{
+	struct iio_poll_func *pf = p;
+	struct iio_dev *indio_dev = pf->indio_dev;
+	struct bmi088_accel_data *data = iio_priv(indio_dev);
+	int ret;
+
+	ret = regmap_bulk_read(data->regmap, BMI088_ACCEL_REG_XOUT_L,
+			       data->scan.chans, sizeof(data->scan.chans));
+	if (ret)
+		goto out;
+
+	iio_push_to_buffers_with_timestamp(indio_dev, &data->scan,
+					   pf->timestamp);
+
+out:
+	iio_trigger_notify_done(indio_dev->trig);
+
+	return IRQ_HANDLED;
+}
+
+static int bmi088_accel_data_rdy_trigger_set_state(struct iio_trigger *trig,
+						   bool state)
+{
+	struct iio_dev *indio_dev = iio_trigger_get_drvdata(trig);
+	struct bmi088_accel_data *data = iio_priv(indio_dev);
+	struct device *dev = regmap_get_device(data->regmap);
+	int ret;
+
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret)
+		return ret;
+
+	ret = bmi088_accel_set_new_data_irq(data, state);
+	if (ret) {
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
+		return ret;
+	}
+
+	data->dready_trigger_on = state;
+
+	if (!state) {
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
+	}
+
+	return 0;
+}
+
+static const struct iio_trigger_ops bmi088_accel_trigger_ops = {
+	.set_trigger_state = bmi088_accel_data_rdy_trigger_set_state,
+};
+
+static irqreturn_t bmi088_accel_data_rdy_trig_poll(int irq, void *private)
+{
+	struct iio_dev *indio_dev = private;
+	struct bmi088_accel_data *data = iio_priv(indio_dev);
+
+	if (data->dready_trigger_on)
+		iio_trigger_poll(data->dready_trig);
+
+	return IRQ_HANDLED;
+}
+
 static int bmi088_accel_chip_init(struct bmi088_accel_data *data, enum bmi_device_type type)
 {
 	struct device *dev = regmap_get_device(data->regmap);
@@ -558,6 +689,7 @@ int bmi088_accel_core_probe(struct device *dev, struct regmap *regmap,
 	dev_set_drvdata(dev, indio_dev);
 
 	data->regmap = regmap;
+	data->irq = irq;
 
 	ret = bmi088_accel_chip_init(data, type);
 	if (ret)
@@ -570,6 +702,12 @@ int bmi088_accel_core_probe(struct device *dev, struct regmap *regmap,
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->info = &bmi088_accel_info;
 
+	if (data->irq > 0) {
+		ret = bmi088_accel_config_irq_pin(data);
+		if (ret)
+			return ret;
+	}
+
 	/* Enable runtime PM */
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_suspended(dev);
@@ -579,10 +717,59 @@ int bmi088_accel_core_probe(struct device *dev, struct regmap *regmap,
 	pm_runtime_use_autosuspend(dev);
 	pm_runtime_put(dev);
 
-	ret = iio_device_register(indio_dev);
-	if (ret)
-		dev_err(dev, "Unable to register iio device\n");
+	if (data->irq > 0) {
+		ret = devm_request_irq(dev, data->irq,
+				       bmi088_accel_data_rdy_trig_poll,
+				       IRQF_TRIGGER_RISING,
+				       "bmi088_accel_event",
+				       indio_dev);
+		if (ret)
+			goto err_pm_cleanup;
 
+		data->dready_trig = devm_iio_trigger_alloc(dev,
+							   "%s-dev%d",
+							   indio_dev->name,
+							   iio_device_id(indio_dev));
+		if (!data->dready_trig) {
+			ret = -ENOMEM;
+			goto err_pm_cleanup;
+		}
+
+		data->dready_trig->dev.parent = dev;
+		data->dready_trig->ops = &bmi088_accel_trigger_ops;
+		iio_trigger_set_drvdata(data->dready_trig, indio_dev);
+		ret = iio_trigger_register(data->dready_trig);
+		if (ret)
+			goto err_pm_cleanup;
+
+		indio_dev->trig = iio_trigger_get(data->dready_trig);
+	}
+
+	ret = iio_triggered_buffer_setup(indio_dev,
+					 iio_pollfunc_store_time,
+					 bmi088_accel_trigger_handler,
+					 NULL);
+	if (ret) {
+		dev_err(dev, "Failed to setup triggered buffer\n");
+		goto err_trigger_unregister;
+	}
+
+	ret = iio_device_register(indio_dev);
+	if (ret) {
+		dev_err(dev, "Unable to register iio device\n");
+		goto err_buffer_cleanup;
+	}
+
+	return 0;
+
+err_buffer_cleanup:
+	iio_triggered_buffer_cleanup(indio_dev);
+err_trigger_unregister:
+	if (data->dready_trig)
+		iio_trigger_unregister(data->dready_trig);
+err_pm_cleanup:
+	pm_runtime_dont_use_autosuspend(dev);
+	pm_runtime_disable(dev);
 	return ret;
 }
 EXPORT_SYMBOL_NS_GPL(bmi088_accel_core_probe, "IIO_BMI088");
@@ -594,6 +781,11 @@ void bmi088_accel_core_remove(struct device *dev)
 	struct bmi088_accel_data *data = iio_priv(indio_dev);
 
 	iio_device_unregister(indio_dev);
+
+	iio_triggered_buffer_cleanup(indio_dev);
+
+	if (data->dready_trig)
+		iio_trigger_unregister(data->dready_trig);
 
 	pm_runtime_disable(dev);
 	pm_runtime_set_suspended(dev);
