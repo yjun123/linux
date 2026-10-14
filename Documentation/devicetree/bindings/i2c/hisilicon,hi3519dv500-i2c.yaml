@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/i2c/hisilicon,hi3519dv500-i2c.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: I2C controller for HiSilicon Hi3519DV500 SoC
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+allOf:
+  - $ref: /schemas/i2c/i2c-controller.yaml#
+
+properties:
+  compatible:
+    enum:
+      - hisilicon,hi3519dv500-i2c
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+    description:
+      The interrupt of the controller. If it is not provided, the
+      controller is driven in polling mode.
+
+  clocks:
+    maxItems: 1
+
+  clock-frequency:
+    description: Desired I2C bus frequency in Hz
+    default: 100000
+
+  resets:
+    maxItems: 1
+
+  reset-names:
+    const: i2c_reset
+
+  dmas:
+    description:
+      Optional receive and transmit DMA channels. Messages longer
+      than a few bytes are served by DMA, otherwise the controller
+      falls back to the FIFO interrupts.
+    minItems: 2
+    maxItems: 2
+
+  dma-names:
+    items:
+      - const: rx
+      - const: tx
+
+required:
+  - compatible
+  - reg
+  - clocks
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    i2c@11060000 {
+        compatible = "hisilicon,hi3519dv500-i2c";
+        reg = <0x11060000 0x1000>;
+        clocks = <&crg 50>;
+        clock-frequency = <100000>;
+        resets = <&crg 0x4280 0>;
+        reset-names = "i2c_reset";
+        dmas = <&dma 0 0>, <&dma 1 1>;
+        dma-names = "rx", "tx";
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+...
