@@ -511,6 +511,35 @@
 			status = "disabled";
 		};
 
+		gmac: ethernet@10290000 {
+			compatible = "hisilicon,gmac-v5";
+			reg = <0x10290000 0x1000>, <0x1029300c 0x4>;
+			reg-names = "control", "macif";
+			interrupts = <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_ETH_CLK>,
+				 <&crg HI3519DV500_ETH_MACIF_CLK>;
+			clock-names = "gmac_clk", "macif_clk";
+			resets = <&crg 0x37c4 0>, <&crg 0x37c0 0>;
+			reset-names = "port_reset", "macif_reset";
+			pinctrl-names = "default";
+			pinctrl-0 = <&rgmii_pins &mdio_pins &ephy_pins>;
+			status = "disabled";
+		};
+
+		mdio: mdio@102903c0 {
+			compatible = "hisilicon,gemac-mdio";
+			reg = <0x102903c0 0x20>;
+			clocks = <&crg HI3519DV500_ETH_CLK>;
+			resets = <&crg 0x37cc 0>;
+			reset-names = "phy_reset";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
 		timer0: timer@11000000 {
 			compatible = "arm,sp804", "arm,primecell";
 			reg = <0x11000000 0x1000>;
