@@ -5,6 +5,7 @@
  * Copyright (c) 2015-2016 HiSilicon Technologies Co., Ltd.
  */
 
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
@@ -82,7 +83,22 @@ static int hisi_reset_deassert(struct reset_controller_dev *rcdev,
 	return 0;
 }
 
+static int hisi_reset_reset(struct reset_controller_dev *rcdev,
+			    unsigned long id)
+{
+	int ret;
+
+	ret = hisi_reset_assert(rcdev, id);
+	if (ret)
+		return ret;
+
+	udelay(1);
+
+	return hisi_reset_deassert(rcdev, id);
+}
+
 static const struct reset_control_ops hisi_reset_ops = {
+	.reset		= hisi_reset_reset,
 	.assert		= hisi_reset_assert,
 	.deassert	= hisi_reset_deassert,
 };
