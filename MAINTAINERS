@@ -11743,8 +11743,10 @@ HISILICON HI3519DV500 ETHERNET DRIVER
 M:	Jun Yan <jerrysteve1101@gmail.com>
 L:	netdev@vger.kernel.org
 S:	Maintained
+F:	Documentation/devicetree/bindings/net/hisilicon,gemac-mdio.yaml
 F:	Documentation/devicetree/bindings/net/hisilicon,gmac-v5.yaml
 F:	drivers/net/ethernet/hisilicon/hisi_gmac_v5.c
+F:	drivers/net/ethernet/hisilicon/mdio_gemac.c
 
 HISILICON HI3519DV500 I2C DRIVER
 M:	Jun Yan <jerrysteve1101@gmail.com>

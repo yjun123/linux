@@ -51,6 +51,16 @@ config HISI_GMAC_V5
 	  MII and RMII interface modes with hardware TSO, receive
 	  checksum offload and RSS.
 
+config MDIO_HISI_GEMAC
+	tristate "HiSilicon GEMAC MDIO bus controller support"
+	depends on HAS_IOMEM
+	select PHYLIB
+	help
+	  This selects the MDIO bus controller used by the HiSilicon
+	  GEMAC family Ethernet MACs to talk to the external PHY.  The
+	  controller is instantiated as a separate platform device and
+	  may also carry the external PHY reset line.  If unsure, say N.
+
 config HIP04_ETH
 	tristate "HISILICON P04 Ethernet support"
 	depends on HAS_IOMEM	# For MFD_SYSCON
