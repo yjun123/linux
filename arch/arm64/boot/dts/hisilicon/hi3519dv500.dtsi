@@ -560,6 +560,130 @@
 			status = "disabled";
 		};
 
+		i2c0: i2c@11060000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11060000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C0_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x4280 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 0 0>, <&dma 1 1>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c0_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@11061000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11061000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C1_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x4288 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 2 2>, <&dma 3 3>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c1m0_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c2: i2c@11062000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11062000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C2_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x4290 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 4 4>, <&dma 5 5>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c2m0_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c3: i2c@11063000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11063000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C3_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x4298 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 6 6>, <&dma 7 7>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c3_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c4: i2c@11064000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11064000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C4_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x42a0 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 8 8>, <&dma 9 9>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c4_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c5: i2c@11065000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11065000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C5_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x42a8 0>;
+			reset-names = "i2c_reset";
+			dmas = <&dma 10 10>, <&dma 11 11>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c5_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c6: i2c@11066000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11066000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C6_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x42b0 0>;
+			reset-names = "i2c_reset";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c6_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c7: i2c@11067000 {
+			compatible = "hisilicon,hi3519dv500-i2c";
+			reg = <0x11067000 0x1000>;
+			clocks = <&crg HI3519DV500_I2C7_CLK>;
+			clock-frequency = <100000>;
+			resets = <&crg 0x42b8 0>;
+			reset-names = "i2c_reset";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c7_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
 		spi0: spi@11070000 {
 			compatible = "arm,pl022", "arm,primecell";
 			arm,primecell-periphid = <0x00800022>;
