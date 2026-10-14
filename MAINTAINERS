@@ -11739,6 +11739,13 @@ F:	Documentation/devicetree/bindings/pinctrl/hisilicon,hi3519dv500-ioconfig.yaml
 F:	drivers/pinctrl/hisilicon/pinctrl-hi3519dv500.c
 F:	include/dt-bindings/pinctrl/pinctrl-hi3519dv500.h
 
+HISILICON HI3519DV500 I2C DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-i2c@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/i2c/hisilicon,hi3519dv500-i2c.yaml
+F:	drivers/i2c/busses/i2c-hi3519dv500.c
+
 HISILICON LPC BUS DRIVER
 M:	Jay Fang <f.fangjian@huawei.com>
 S:	Maintained

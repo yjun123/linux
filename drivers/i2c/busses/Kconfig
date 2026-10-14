@@ -109,6 +109,17 @@ config I2C_HIX5HD2
 	  This driver can also be built as a module. If so, the module
 	  will be called i2c-hix5hd2.
 
+config I2C_HI3519DV500
+	tristate "HiSilicon Hi3519DV500 I2C controller"
+	depends on ARCH_HISI || COMPILE_TEST
+	default ARCH_HISI
+	help
+	  If you say yes to this option, support will be included for the
+	  I2C interface on the HiSilicon Hi3519DV500 SoC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called i2c-hi3519dv500.
+
 config I2C_I801
 	tristate "Intel 82801 (ICH/PCH)"
 	depends on PCI && HAS_IOPORT
