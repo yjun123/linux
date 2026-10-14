@@ -7,6 +7,7 @@
 
 #include <dt-bindings/clock/hi3519dv500-clock.h>
 #include <linux/clk-provider.h>
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 
@@ -215,6 +216,207 @@ struct hi3519dv500_crg_data {
 	struct hisi_reset_controller *rstc;
 };
 
+/*
+ * The USB clocks are composite CRG sequences: a default value is
+ * written as a whole first, then a set of gate and reset bits is
+ * managed across the prepare and enable stages, so that the PHY
+ * drivers can program their analog trim words while the reset line
+ * is still asserted.
+ */
+#define USB2_PHY_CRG_OFFSET		0x38c0
+#define USB2_PHY_CRG_DEFAULT		0x107
+#define USB2_PHY_APB_CKEN		BIT(6)
+#define USB2_PHY_XTAL_CKEN		BIT(4)
+#define USB2_PHY_APB_SREQ		BIT(2)
+#define USB2_PHY_TREQ			BIT(1)
+#define USB2_PHY_REQ			BIT(0)
+
+#define USB30_CTRL_CRG_OFFSET		0x3940
+#define USB30_CTRL_CRG_DEFAULT		0x10003
+#define USB30_CTRL_FREECLK_SEL		BIT(16)
+#define USB30_CTRL_PIPE_CKEN		BIT(12)
+#define USB30_CTRL_UTMI_CKEN		BIT(8)
+#define USB30_CTRL_SUSPEND_CKEN		BIT(6)
+#define USB30_CTRL_REF_CKEN		BIT(5)
+#define USB30_CTRL_BUS_CKEN		BIT(4)
+#define USB30_CTRL_SRST_REQ		BIT(0)
+
+#define USB3_PHY_CRG_OFFSET		0x3944
+#define USB3_PHY_CRG_DEFAULT		0x3
+#define USB3_PHY_REF_CKEN		BIT(4)
+#define USB3_PHY_APB_SREQ		BIT(2)
+#define USB3_PHY_SRST_REQ		BIT(1)
+#define USB3_PHY_REQ			BIT(0)
+
+struct hi3519dv500_usb_clk {
+	struct clk_hw hw;
+	void __iomem *base;
+	const struct hi3519dv500_usb_clk_info *info;
+};
+
+struct hi3519dv500_usb_clk_info {
+	u32 offset;
+	u32 default_val;
+	u32 prepare_set;
+	u32 prepare_clr;
+	u32 enable_set;
+	u32 enable_clr;
+	const char *name;
+};
+
+#define to_hi3519dv500_usb_clk(_hw) \
+	container_of(_hw, struct hi3519dv500_usb_clk, hw)
+
+static int hi3519dv500_usb_clk_prepare(struct clk_hw *hw)
+{
+	struct hi3519dv500_usb_clk *clk = to_hi3519dv500_usb_clk(hw);
+	const struct hi3519dv500_usb_clk_info *info = clk->info;
+	u32 val;
+
+	writel(info->default_val, clk->base + info->offset);
+	udelay(200); /* delay 200 us to wait the CRG stable */
+
+	val = readl(clk->base + info->offset);
+	val |= info->prepare_set;
+	val &= ~info->prepare_clr;
+	writel(val, clk->base + info->offset);
+
+	return 0;
+}
+
+static void hi3519dv500_usb_clk_unprepare(struct clk_hw *hw)
+{
+	struct hi3519dv500_usb_clk *clk = to_hi3519dv500_usb_clk(hw);
+
+	writel(clk->info->default_val, clk->base + clk->info->offset);
+}
+
+static int hi3519dv500_usb_clk_enable(struct clk_hw *hw)
+{
+	struct hi3519dv500_usb_clk *clk = to_hi3519dv500_usb_clk(hw);
+	u32 val;
+
+	val = readl(clk->base + clk->info->offset);
+	val |= clk->info->enable_set;
+	val &= ~clk->info->enable_clr;
+	writel(val, clk->base + clk->info->offset);
+
+	return 0;
+}
+
+static void hi3519dv500_usb_clk_disable(struct clk_hw *hw)
+{
+	struct hi3519dv500_usb_clk *clk = to_hi3519dv500_usb_clk(hw);
+	u32 val;
+
+	val = readl(clk->base + clk->info->offset);
+	val |= clk->info->enable_clr;
+	writel(val, clk->base + clk->info->offset);
+}
+
+static const struct clk_ops hi3519dv500_usb_clk_ops = {
+	.prepare = hi3519dv500_usb_clk_prepare,
+	.unprepare = hi3519dv500_usb_clk_unprepare,
+	.enable = hi3519dv500_usb_clk_enable,
+	.disable = hi3519dv500_usb_clk_disable,
+};
+
+/*
+ * The USB2 PHY keeps the TREQ reset asserted across prepare, so the
+ * trim words can be programmed before the reset is released by enable.
+ * The USB30 controller sequence leaves the pinout and SuperSpeed
+ * enable handling to the DWC3 glue driver.
+ */
+static const struct hi3519dv500_usb_clk_info hi3519dv500_usb_clks[] = {
+	{
+		.offset = USB2_PHY_CRG_OFFSET,
+		.default_val = USB2_PHY_CRG_DEFAULT,
+		.prepare_set = USB2_PHY_APB_CKEN | USB2_PHY_XTAL_CKEN,
+		.prepare_clr = USB2_PHY_APB_SREQ | USB2_PHY_REQ,
+		.enable_clr = USB2_PHY_TREQ,
+		.name = "clk_usb2_phy0",
+	},
+	{
+		.offset = USB30_CTRL_CRG_OFFSET,
+		.default_val = USB30_CTRL_CRG_DEFAULT,
+		.enable_set = USB30_CTRL_FREECLK_SEL | USB30_CTRL_PIPE_CKEN |
+			      USB30_CTRL_UTMI_CKEN | USB30_CTRL_SUSPEND_CKEN |
+			      USB30_CTRL_REF_CKEN | USB30_CTRL_BUS_CKEN,
+		.enable_clr = USB30_CTRL_SRST_REQ,
+		.name = "clk_usb30_ctrl0",
+	},
+	{
+		.offset = USB3_PHY_CRG_OFFSET,
+		.default_val = USB3_PHY_CRG_DEFAULT,
+		.prepare_set = USB3_PHY_REF_CKEN | USB3_PHY_APB_SREQ,
+		.enable_clr = USB3_PHY_SRST_REQ | USB3_PHY_REQ,
+		.name = "clk_usb3_phy0",
+	},
+};
+
+static const int hi3519dv500_usb_clk_ids[] = {
+	HI3519DV500_USB2_PHY0_CLK,
+	HI3519DV500_USB30_CTRL0_CLK,
+	HI3519DV500_USB3_PHY0_CLK,
+};
+
+static int hi3519dv500_clk_register_usb(struct platform_device *pdev,
+					struct hisi_clock_data *clk_data)
+{
+	struct clk_init_data init = {};
+	int ret;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(hi3519dv500_usb_clks); i++) {
+		const struct hi3519dv500_usb_clk_info *info =
+			&hi3519dv500_usb_clks[i];
+		struct hi3519dv500_usb_clk *usb_clk;
+		struct clk_hw *hw;
+
+		usb_clk = devm_kzalloc(&pdev->dev, sizeof(*usb_clk),
+				       GFP_KERNEL);
+		if (!usb_clk)
+			return -ENOMEM;
+
+		usb_clk->base = clk_data->base;
+		usb_clk->info = info;
+
+		init.name = info->name;
+		init.ops = &hi3519dv500_usb_clk_ops;
+		init.flags = 0;
+		init.parent_names = NULL;
+		init.num_parents = 0;
+		usb_clk->hw.init = &init;
+
+		hw = &usb_clk->hw;
+		ret = clk_hw_register(&pdev->dev, hw);
+		if (ret)
+			return ret;
+
+		clk_data->clk_data.clks[hi3519dv500_usb_clk_ids[i]] =
+			hw->clk;
+	}
+
+	return 0;
+}
+
+static void hi3519dv500_clk_unregister_usb(struct platform_device *pdev,
+					   struct hisi_clock_data *clk_data)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(hi3519dv500_usb_clk_ids); i++) {
+		struct clk *clk;
+
+		clk = clk_data->clk_data.clks[hi3519dv500_usb_clk_ids[i]];
+		if (!clk)
+			continue;
+
+		clk_unregister(clk);
+		clk_data->clk_data.clks[hi3519dv500_usb_clk_ids[i]] = NULL;
+	}
+}
+
 static struct hisi_clock_data *hi3519dv500_clk_register(struct platform_device *pdev)
 {
 	struct hisi_clock_data *clk_data;
@@ -239,13 +441,19 @@ static struct hisi_clock_data *hi3519dv500_clk_register(struct platform_device *
 	if (ret)
 		goto unregister_mux;
 
-	ret = of_clk_add_provider(pdev->dev.of_node,
-			of_clk_src_onecell_get, &clk_data->clk_data);
+	ret = hi3519dv500_clk_register_usb(pdev, clk_data);
 	if (ret)
 		goto unregister_gate;
 
+	ret = of_clk_add_provider(pdev->dev.of_node,
+			of_clk_src_onecell_get, &clk_data->clk_data);
+	if (ret)
+		goto unregister_usb;
+
 	return clk_data;
 
+unregister_usb:
+	hi3519dv500_clk_unregister_usb(pdev, clk_data);
 unregister_gate:
 	hisi_clk_unregister_gate(hi3519dv500_gate_clks,
 			ARRAY_SIZE(hi3519dv500_gate_clks), clk_data);
@@ -264,6 +472,7 @@ static void hi3519dv500_clk_unregister(struct platform_device *pdev)
 
 	of_clk_del_provider(pdev->dev.of_node);
 
+	hi3519dv500_clk_unregister_usb(pdev, crg->clk_data);
 	hisi_clk_unregister_gate(hi3519dv500_gate_clks,
 			ARRAY_SIZE(hi3519dv500_gate_clks), crg->clk_data);
 	hisi_clk_unregister_mux(hi3519dv500_mux_clks,
