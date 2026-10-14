@@ -15,6 +15,19 @@ config COMMON_CLK_HI3519
 	help
 	  Build the clock driver for hi3519.
 
+config COMMON_CLK_HI3519DV500
+	tristate "Hi3519DV500 Clock Driver"
+	depends on ARCH_HISI || COMPILE_TEST
+	select RESET_HISI
+	default ARCH_HISI
+	help
+	  Build the clock driver for the CRG (Clock and Reset Generator)
+	  block of the HiSilicon Hi3519DV500 SoC. It provides the clocks
+	  and resets for the on-chip peripherals such as UARTs, GPIOs and
+	  SPI controllers.
+
+	  If unsure, say Y.
+
 config COMMON_CLK_HI3559A
 	bool "Hi3559A Clock Driver"
 	depends on ARCH_HISI || COMPILE_TEST

@@ -11716,6 +11716,14 @@ M:	Yushan Wang <wangyushan12@huawei.com>
 S:	Maintained
 F:	drivers/cache/hisi_soc_hha.c
 
+HISILICON HI3519DV500 CLOCK DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-clk@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/clock/hisilicon,hi3519dv500-clock.yaml
+F:	drivers/clk/hisilicon/clk-hi3519dv500.c
+F:	include/dt-bindings/clock/hi3519dv500-clock.h
+
 HISILICON LPC BUS DRIVER
 M:	Jay Fang <f.fangjian@huawei.com>
 S:	Maintained
