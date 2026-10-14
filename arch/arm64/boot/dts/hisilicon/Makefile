@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
+dtb-$(CONFIG_ARCH_HISI) += hi3519dv500-sunny-camera-flash.dtb
 dtb-$(CONFIG_ARCH_HISI) += hi3660-hikey960.dtb
 dtb-$(CONFIG_ARCH_HISI) += hi3670-hikey970.dtb
 dtb-$(CONFIG_ARCH_HISI) += hi3798cv200-poplar.dtb
