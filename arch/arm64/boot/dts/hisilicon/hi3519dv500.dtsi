@@ -539,9 +539,12 @@
 					 <HI3519DV500_PINMUX(0x20, 1)>;
 			};
 
-			ephy_pins: ephy-pins {
-				pinmux = <HI3519DV500_PINMUX(0x10, 1)>,
-					 <HI3519DV500_PINMUX(0x14, 1)>;
+			ephy_clk_pins: ephy-clk-pins {
+				pinmux = <HI3519DV500_PINMUX(0x10, 1)>;
+			};
+
+			ephy_rstn_pins: ephy-rstn-pins {
+				pinmux = <HI3519DV500_PINMUX(0x14, 1)>;
 			};
 		};
 
@@ -557,6 +560,35 @@
 			dma-requests = <32>;
 			dma-channels = <8>;
 			#dma-cells = <2>;
+		};
+
+		gmac: ethernet@10290000 {
+			compatible = "hisilicon,gmac-v5";
+			reg = <0x10290000 0x1000>, <0x1029300c 0x4>;
+			reg-names = "control", "macif";
+			interrupts = <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_ETH_CLK>,
+				 <&crg HI3519DV500_ETH_MACIF_CLK>;
+			clock-names = "gmac_clk", "macif_clk";
+			resets = <&crg 0x37c4 0>, <&crg 0x37c0 0>;
+			reset-names = "port_reset", "macif_reset";
+			pinctrl-names = "default";
+			pinctrl-0 = <&rgmii_pins &mdio_pins &ephy_clk_pins>;
+			status = "disabled";
+
+			/*
+			 * The MDIO registers live at 0x3c0 inside the MAC
+			 * register window, so the bus is a child of the MAC
+			 * and carries no reg of its own.
+			 */
+			mdio: mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				status = "disabled";
+			};
 		};
 
 		timer0: timer@11000000 {
