@@ -236,6 +236,80 @@
 			};
 		};
 
+		mmc0: mmc@10020000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10020000 0x1000>;
+			interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC0_CLK>, <&crg HI3519DV500_MMC0_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x34c0 16>, <&crg 0x34c0 17>,
+				 <&crg 0x34c0 18>, <&crg 0x34c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			bus-width = <8>;
+			non-removable;
+			cap-mmc-highspeed;
+			mmc-hs200-1_8v;
+			mmc-hs400-1_8v;
+			mmc-hs400-enhanced-strobe;
+			cap-mmc-hw-reset;
+			no-sd;
+			no-sdio;
+			max-frequency = <150000000>;
+			pinctrl-names = "default", "mmc-hs", "hs200", "hs400";
+			pinctrl-0 = <&mmc0_clk_pins &mmc0_cmd_pins &mmc0_data_pins
+				     &mmc0_rst_pins &mmc0_ds_pins>;
+			pinctrl-1 = <&mmc0_hs_clk_pins &mmc0_hs_data_pins>;
+			pinctrl-2 = <&mmc0_hs200_clk_pins &mmc0_hs200_data_pins
+				     &mmc0_hs200_ds_pins>;
+			pinctrl-3 = <&mmc0_hs400_pins &mmc0_hs400_ds_pins>;
+			status = "disabled";
+		};
+
+		mmc1: mmc@10030000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10030000 0x1000>;
+			interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC1_CLK>, <&crg HI3519DV500_MMC1_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x35c0 16>, <&crg 0x35c0 17>,
+				 <&crg 0x35c0 18>, <&crg 0x35c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			sd-uhs-sdr12;
+			sd-uhs-sdr25;
+			sd-uhs-sdr50;
+			sd-uhs-sdr104;
+			full-pwr-cycle;
+			disable-wp;
+			no-mmc;
+			no-sdio;
+			max-frequency = <150000000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdio0_clk_pins &sdio0_cmd_pins &sdio0_data_pins>;
+			status = "disabled";
+		};
+
+		mmc2: mmc@10040000 {
+			compatible = "hisilicon,hi3519dv500-dwcmshc";
+			reg = <0x10040000 0x1000>;
+			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_MMC2_CLK>, <&crg HI3519DV500_MMC2_HCLK>;
+			clock-names = "core", "bus";
+			resets = <&crg 0x36c0 16>, <&crg 0x36c0 17>,
+				 <&crg 0x36c0 18>, <&crg 0x36c4 1>;
+			reset-names = "crg_reset", "crg_tx", "crg_rx", "dll_reset";
+			hisilicon,crg-syscon = <&crg>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			max-frequency = <150000000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdio1_clk_pins &sdio1_cmd_pins &sdio1_data_pins>;
+			status = "disabled";
+		};
+
 		ioconfig1: ioconfig@10260000 {
 			compatible = "hisilicon,hi3519dv500-ioconfig1";
 			reg = <0x10260000 0x10000>;
@@ -470,7 +544,7 @@
 		};
 
 		crg: clock-controller@11010000 {
-			compatible = "hisilicon,hi3519dv500-clock";
+			compatible = "hisilicon,hi3519dv500-clock", "syscon";
 			reg = <0x11010000 0x10000>;
 			#clock-cells = <1>;
 			#reset-cells = <2>;
