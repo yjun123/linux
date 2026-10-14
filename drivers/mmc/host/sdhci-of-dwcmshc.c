@@ -15,8 +15,11 @@
 #include <linux/dma-mapping.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
+#include <linux/mmc/host.h>
+#include <linux/mmc/mmc.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
@@ -279,6 +282,43 @@
 #define PHY_DELAY_CODE_SD		0x55
 #define PHY_DELAY_CODE_SDIO		0x29
 
+/* HiSilicon Hi3519DV500 specific registers */
+#define HI3519DV500_VENDOR_AREA1		0x500
+#define HI3519DV500_CQE_AREA		0x180
+#define HI3519DV500_EMMC_HW_RESET	0x534
+#define HI3519DV500_AT_CTRL		0x540
+#define HI3519DV500_AT_CTRL_SAMPLE_EN	BIT(4)
+#define HI3519DV500_AT_STAT		0x544
+#define HI3519DV500_AT_STAT_PHASE_MASK	0xff
+#define HI3519DV500_MULTI_CYCLE		0x54c
+#define HI3519DV500_FOUND_EDGE		BIT(11)
+#define HI3519DV500_EDGE_DETECT_EN	BIT(8)
+
+/* Controller instances, derived from the controller register address */
+#define HI3519DV500_MMC_BASE		0x10020000
+#define HI3519DV500_MMC_STRIDE		0x10000
+#define HI3519DV500_DEVID_MMC0		0
+#define HI3519DV500_DEVID_SDIO0		1
+#define HI3519DV500_DEVID_SDIO1		2
+
+/* Hi3519DV500 CRG registers: base per controller plus fixed offsets */
+#define HI3519DV500_CRG_OFS(devid)	(0x34c0 + (devid) * 0x1000)
+#define HI3519DV500_CRG_DRV_DLL_OFS	0x8
+#define HI3519DV500_CRG_DLL_STA_OFS	0x18
+#define HI3519DV500_CRG_P4_DLL_LOCKED	BIT(9)
+#define HI3519DV500_CRG_DS_DLL_READY	BIT(10)
+#define HI3519DV500_CRG_SAM_DLL_READY	BIT(12)
+#define HI3519DV500_CRG_DRV_PHASE_SHIFT	15
+#define HI3519DV500_CRG_DRV_PHASE_MASK	GENMASK(19, 15)
+
+/* Fixed timing values are encoded with a valid bit, so that an all-zero
+ * entry marks an undefined speed mode.
+ */
+#define HI3519DV500_TIMING_VALID	BIT(31)
+#define HI3519DV500_TIMING_MASK		GENMASK(30, 0)
+#define HI3519DV500_PHASE_SCALE		32
+#define HI3519DV500_TUNING_STEP		4
+
 struct rk35xx_priv {
 	struct reset_control *reset;
 	u8 txclk_tapnum;
@@ -292,6 +332,112 @@ struct eic7700_priv {
 struct k230_priv  {
 	/* Canaan k230 specific */
 	struct regmap *hi_sys_regmap;
+};
+
+#define HI3519DV500_DRV_PHASE(lvl) \
+	(HI3519DV500_TIMING_VALID | (lvl) << HI3519DV500_CRG_DRV_PHASE_SHIFT)
+#define HI3519DV500_SAMP_PHASE(lvl) \
+	(HI3519DV500_TIMING_VALID | (lvl))
+
+struct hi3519dv500_timing {
+	u32 drv_phase;	/* value to program into the CRG drive DLL field */
+	u32 samp_phase;	/* fixed sample phase, 0 means use tuning result */
+};
+
+struct hi3519dv500_priv {
+	u32 devid;
+	struct regmap *crg_regmap;
+	struct pinctrl *pinctrl;
+	struct reset_control *crg_rst;
+	struct reset_control *crg_tx_rst;
+	struct reset_control *crg_rx_rst;
+	struct reset_control *dll_rst;
+	u32 crg_ofs;
+	const struct hi3519dv500_timing *timing;
+	u32 drv_phase;
+	u32 sample_phase;
+	u32 tuning_phase;
+};
+
+static const struct hi3519dv500_timing hi3519dv500_timing_emmc[MMC_TIMING_MMC_HS400 + 1] = {
+	[MMC_TIMING_LEGACY] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(0),
+	},
+	[MMC_TIMING_MMC_HS] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_MMC_HS200] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(18),
+	},
+	[MMC_TIMING_MMC_HS400] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(9),
+	},
+};
+
+static const struct hi3519dv500_timing hi3519dv500_timing_sdio0[MMC_TIMING_MMC_HS400 + 1] = {
+	[MMC_TIMING_LEGACY] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(0),
+	},
+	[MMC_TIMING_MMC_HS] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(19),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_SD_HS] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_UHS_SDR12] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(0),
+	},
+	[MMC_TIMING_UHS_SDR25] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_UHS_SDR50] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(20),
+	},
+	[MMC_TIMING_UHS_SDR104] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(20),
+	},
+	[MMC_TIMING_MMC_HS200] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(20),
+	},
+};
+
+static const struct hi3519dv500_timing hi3519dv500_timing_sdio1[MMC_TIMING_MMC_HS400 + 1] = {
+	[MMC_TIMING_LEGACY] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(0),
+	},
+	[MMC_TIMING_MMC_HS] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_SD_HS] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_UHS_SDR12] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(0),
+	},
+	[MMC_TIMING_UHS_SDR25] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(16),
+		.samp_phase = HI3519DV500_SAMP_PHASE(4),
+	},
+	[MMC_TIMING_UHS_SDR50] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(20),
+	},
+	[MMC_TIMING_UHS_SDR104] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(19),
+	},
+	[MMC_TIMING_MMC_HS200] = {
+		.drv_phase = HI3519DV500_DRV_PHASE(20),
+	},
 };
 
 #define DWCMSHC_MAX_OTHER_CLKS 3
@@ -1998,6 +2144,642 @@ static int dwcmshc_k230_init(struct device *dev, struct sdhci_host *host,
 	return 0;
 }
 
+/*
+ * HiSilicon Hi3519DV500 eMMC/SD specific code
+ */
+static struct hi3519dv500_priv *hi3519dv500_get_priv(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct dwcmshc_priv *dwc_priv = sdhci_pltfm_priv(pltfm_host);
+
+	return dwc_priv->priv;
+}
+
+static const struct hi3519dv500_timing *
+hi3519dv500_get_timing(struct sdhci_host *host)
+{
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	const struct hi3519dv500_timing *timing;
+	unsigned int timing_idx = host->timing;
+
+	/* HS400 enhanced strobe keeps the fixed HS400 timing */
+	if (timing_idx > MMC_TIMING_MMC_HS400)
+		timing_idx = MMC_TIMING_MMC_HS400;
+
+	timing = &hi_priv->timing[timing_idx];
+
+	/* fall back to the legacy timing for undefined speed modes */
+	if (!(timing->drv_phase & HI3519DV500_TIMING_VALID))
+		timing = &hi_priv->timing[MMC_TIMING_LEGACY];
+
+	return timing;
+}
+
+static void hi3519dv500_get_drv_samp_phase(struct sdhci_host *host)
+{
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	const struct hi3519dv500_timing *timing = hi3519dv500_get_timing(host);
+
+	hi_priv->drv_phase = timing->drv_phase & HI3519DV500_TIMING_MASK;
+
+	/* use the phase found by tuning when no fixed phase is defined */
+	if (timing->samp_phase & HI3519DV500_TIMING_VALID)
+		hi_priv->sample_phase =
+			timing->samp_phase & HI3519DV500_TIMING_MASK;
+	else
+		hi_priv->sample_phase = hi_priv->tuning_phase;
+}
+
+static void hi3519dv500_set_drv_phase(struct sdhci_host *host)
+{
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+
+	regmap_update_bits(hi_priv->crg_regmap,
+			   hi_priv->crg_ofs + HI3519DV500_CRG_DRV_DLL_OFS,
+			   HI3519DV500_CRG_DRV_PHASE_MASK,
+			   hi_priv->drv_phase);
+}
+
+static int hi3519dv500_wait_dll_bit(struct sdhci_host *host, u32 mask)
+{
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	unsigned int val;
+	int ret, poll_count = 20; /* max poll count: 20 x 1 ms */
+
+	do {
+		mdelay(1);
+		ret = regmap_read(hi_priv->crg_regmap,
+				  hi_priv->crg_ofs + HI3519DV500_CRG_DLL_STA_OFS,
+				  &val);
+		if (ret)
+			return ret;
+
+		if ((val & mask) == mask)
+			return 0;
+	} while (--poll_count);
+
+	dev_err(mmc_dev(host->mmc), "timeout waiting for DLL status bits 0x%x\n",
+		mask);
+
+	return -ETIMEDOUT;
+}
+
+static void hi3519dv500_set_emmc_card(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct dwcmshc_priv *dwc_priv = sdhci_pltfm_priv(pltfm_host);
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	u32 ctrl;
+
+	if (hi_priv->devid != HI3519DV500_DEVID_MMC0)
+		return;
+
+	ctrl = sdhci_readl(host, dwc_priv->vendor_specific_area1 + DWCMSHC_EMMC_CONTROL);
+	ctrl |= DWCMSHC_CARD_IS_EMMC;
+	sdhci_writel(host, ctrl, dwc_priv->vendor_specific_area1 + DWCMSHC_EMMC_CONTROL);
+}
+
+static void hi3519dv500_enable_sample(struct sdhci_host *host)
+{
+	u32 reg;
+
+	reg = sdhci_readl(host, HI3519DV500_AT_CTRL);
+	reg |= HI3519DV500_AT_CTRL_SAMPLE_EN;
+	sdhci_writel(host, reg, HI3519DV500_AT_CTRL);
+}
+
+static void hi3519dv500_set_sample_phase(struct sdhci_host *host, u32 phase)
+{
+	u32 reg;
+
+	reg = sdhci_readl(host, HI3519DV500_AT_STAT);
+	reg &= ~HI3519DV500_AT_STAT_PHASE_MASK;
+	reg |= phase;
+	sdhci_writel(host, reg, HI3519DV500_AT_STAT);
+}
+
+static void hi3519dv500_disable_card_clk(struct sdhci_host *host)
+{
+	u16 clk;
+
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+}
+
+static void hi3519dv500_enable_card_clk(struct sdhci_host *host)
+{
+	u16 clk;
+
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	clk |= SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+}
+
+static void hi3519dv500_disable_internal_clk(struct sdhci_host *host)
+{
+	u16 clk;
+
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_INT_EN;
+	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+}
+
+static void hi3519dv500_enable_internal_clk(struct sdhci_host *host)
+{
+	u16 clk;
+	int timeout = 20; /* wait max 20 ms */
+
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	clk |= SDHCI_CLOCK_INT_EN | SDHCI_CLOCK_PLL_EN;
+	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+
+	clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	while (!(clk & SDHCI_CLOCK_INT_STABLE)) {
+		if (!timeout) {
+			dev_err(mmc_dev(host->mmc),
+				"Internal clock never stabilised\n");
+			return;
+		}
+		timeout--;
+		udelay(1000);
+		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+	}
+}
+
+static int hi3519dv500_init(struct device *dev, struct sdhci_host *host,
+			    struct dwcmshc_priv *dwc_priv)
+{
+	struct hi3519dv500_priv *hi_priv;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct resource *res;
+	u32 devid;
+
+	hi_priv = devm_kzalloc(dev, sizeof(*hi_priv), GFP_KERNEL);
+	if (!hi_priv)
+		return -ENOMEM;
+
+	/* the vendor area pointer register reads zero on this SoC */
+	dwc_priv->vendor_specific_area1 = HI3519DV500_VENDOR_AREA1;
+	dwc_priv->vendor_specific_area2 = HI3519DV500_CQE_AREA;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	devid = (res->start - HI3519DV500_MMC_BASE) / HI3519DV500_MMC_STRIDE;
+	if (devid > HI3519DV500_DEVID_SDIO1)
+		return dev_err_probe(dev, -EINVAL,
+				     "unknown controller at address %pa\n",
+				     &res->start);
+
+	hi_priv->devid = devid;
+	hi_priv->crg_ofs = HI3519DV500_CRG_OFS(devid);
+
+	switch (devid) {
+	case HI3519DV500_DEVID_MMC0:
+		hi_priv->timing = hi3519dv500_timing_emmc;
+		break;
+	case HI3519DV500_DEVID_SDIO0:
+		hi_priv->timing = hi3519dv500_timing_sdio0;
+		break;
+	default:
+		hi_priv->timing = hi3519dv500_timing_sdio1;
+		break;
+	}
+
+	hi_priv->crg_regmap = syscon_regmap_lookup_by_phandle(dev->of_node,
+							      "hisilicon,crg-syscon");
+	if (IS_ERR(hi_priv->crg_regmap))
+		return dev_err_probe(dev, PTR_ERR(hi_priv->crg_regmap),
+				     "failed to get CRG regmap\n");
+
+	/* Pin muxing and drive strength are owned by the pinctrl driver:
+	 * the default state is applied before this probe runs, the speed
+	 * mode states are selected from set_uhs_signaling()
+	 */
+	hi_priv->pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR(hi_priv->pinctrl)) {
+		dev_dbg(dev, "no pinctrl states, keeping boot configuration\n");
+		hi_priv->pinctrl = NULL;
+	}
+
+	hi_priv->crg_rst = devm_reset_control_get_exclusive(dev, "crg_reset");
+	if (IS_ERR(hi_priv->crg_rst))
+		return dev_err_probe(dev, PTR_ERR(hi_priv->crg_rst),
+				     "failed to get crg reset\n");
+
+	hi_priv->dll_rst = devm_reset_control_get_exclusive(dev, "dll_reset");
+	if (IS_ERR(hi_priv->dll_rst))
+		return dev_err_probe(dev, PTR_ERR(hi_priv->dll_rst),
+				     "failed to get dll reset\n");
+
+	/* the tx and rx resets are optional, share the crg reset otherwise */
+	hi_priv->crg_tx_rst =
+		devm_reset_control_get_optional_exclusive(dev, "crg_tx");
+	if (IS_ERR(hi_priv->crg_tx_rst))
+		return dev_err_probe(dev, PTR_ERR(hi_priv->crg_tx_rst),
+				     "failed to get crg tx reset\n");
+	if (!hi_priv->crg_tx_rst)
+		hi_priv->crg_tx_rst = hi_priv->crg_rst;
+
+	hi_priv->crg_rx_rst =
+		devm_reset_control_get_optional_exclusive(dev, "crg_rx");
+	if (IS_ERR(hi_priv->crg_rx_rst))
+		return dev_err_probe(dev, PTR_ERR(hi_priv->crg_rx_rst),
+				     "failed to get crg rx reset\n");
+	if (!hi_priv->crg_rx_rst)
+		hi_priv->crg_rx_rst = hi_priv->crg_rst;
+
+	dwc_priv->priv = hi_priv;
+
+	/* hold all resets asserted, then release everything but the DLL,
+	 * which is released later after its reference clock is set up
+	 */
+	reset_control_assert(hi_priv->crg_rst);
+	reset_control_assert(hi_priv->crg_tx_rst);
+	reset_control_assert(hi_priv->crg_rx_rst);
+	reset_control_assert(hi_priv->dll_rst);
+
+	udelay(25); /* reset pulse width */
+
+	reset_control_deassert(hi_priv->crg_rst);
+	reset_control_deassert(hi_priv->crg_tx_rst);
+	reset_control_deassert(hi_priv->crg_rx_rst);
+
+	udelay(10); /* settle time before accessing the controller */
+
+	return 0;
+}
+
+static void hi3519dv500_postinit(struct sdhci_host *host,
+				 struct dwcmshc_priv *dwc_priv)
+{
+	/* mark the eMMC controller as driving an eMMC card */
+	hi3519dv500_set_emmc_card(host);
+
+	/* sdhci_execute_tuning() bypasses the core setup of this delay when
+	 * the platform tuning hook takes over, but the tuning commands need
+	 * the settle time before the abort sequence
+	 */
+	host->tuning_delay = 1;
+}
+
+static void hi3519dv500_set_clock(struct sdhci_host *host, unsigned int clock)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+
+	hi3519dv500_disable_card_clk(host);
+	udelay(25); /* let the card clock settle low before changing it */
+	hi3519dv500_disable_internal_clk(host);
+
+	host->mmc->actual_clock = 0;
+
+	if (!clock)
+		return;
+
+	if (pltfm_host->clk) {
+		clk_set_rate(pltfm_host->clk, clock);
+		clock = clk_get_rate(pltfm_host->clk);
+	}
+
+	host->mmc->actual_clock = clock;
+
+	/* program the fixed drive and sample phases for this speed mode */
+	hi3519dv500_get_drv_samp_phase(host);
+	hi3519dv500_set_drv_phase(host);
+	hi3519dv500_enable_sample(host);
+	hi3519dv500_set_sample_phase(host, hi_priv->sample_phase);
+
+	udelay(5);
+
+	hi3519dv500_enable_internal_clk(host);
+
+	/* relock the DLL for the high speed modes */
+	switch (host->timing) {
+	case MMC_TIMING_MMC_HS400:
+	case MMC_TIMING_MMC_HS200:
+	case MMC_TIMING_UHS_SDR50:
+	case MMC_TIMING_UHS_SDR104:
+		reset_control_assert(hi_priv->dll_rst);
+		reset_control_deassert(hi_priv->dll_rst);
+		hi3519dv500_wait_dll_bit(host,
+					 HI3519DV500_CRG_P4_DLL_LOCKED |
+					 HI3519DV500_CRG_SAM_DLL_READY);
+		break;
+	default:
+		break;
+	}
+
+	/* HS400 also needs the data strobe DLL */
+	if (host->timing == MMC_TIMING_MMC_HS400)
+		hi3519dv500_wait_dll_bit(host, HI3519DV500_CRG_DS_DLL_READY);
+
+	hi3519dv500_enable_card_clk(host);
+	udelay(75); /* card clock settle time */
+}
+
+static void hi3519dv500_select_sample_phase(struct sdhci_host *host, u32 phase)
+{
+	hi3519dv500_disable_card_clk(host);
+	hi3519dv500_set_sample_phase(host, phase);
+	hi3519dv500_wait_dll_bit(host, HI3519DV500_CRG_SAM_DLL_READY);
+	hi3519dv500_enable_card_clk(host);
+	udelay(1);
+}
+
+/* The eMMC specification allows CMD12 to stop a tuning command, the SD
+ * specification does not, so only send it for the eMMC tuning opcode.
+ */
+static int hi3519dv500_abort_tuning(struct sdhci_host *host, u32 opcode)
+{
+	struct mmc_command cmd = {};
+
+	if (opcode != MMC_SEND_TUNING_BLOCK_HS200)
+		return 0;
+
+	cmd.opcode = MMC_STOP_TRANSMISSION;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+	/* some controllers turn R1 into R1b, base the busy timeout on the
+	 * 150 ms tuning timeout
+	 */
+	cmd.busy_timeout = 150;
+
+	return mmc_wait_for_cmd(host->mmc, &cmd, 0);
+}
+
+static int hi3519dv500_send_tuning(struct sdhci_host *host, u32 opcode)
+{
+	int err;
+
+	/* a single tuning command is enough to detect an edge */
+	err = mmc_send_tuning(host->mmc, opcode, NULL);
+	if (err) {
+		if (host->tuning_delay > 0)
+			mdelay(host->tuning_delay);
+		hi3519dv500_abort_tuning(host, opcode);
+	}
+
+	return err;
+}
+
+static void hi3519dv500_pre_tuning(struct sdhci_host *host)
+{
+	sdhci_writel(host, host->ier | SDHCI_INT_DATA_AVAIL,
+		     SDHCI_INT_ENABLE);
+	sdhci_writel(host, host->ier | SDHCI_INT_DATA_AVAIL,
+		     SDHCI_SIGNAL_ENABLE);
+
+	hi3519dv500_enable_sample(host);
+}
+
+static void hi3519dv500_restore_ints(struct sdhci_host *host)
+{
+	sdhci_writel(host, host->ier, SDHCI_INT_ENABLE);
+	sdhci_writel(host, host->ier, SDHCI_SIGNAL_ENABLE);
+}
+
+static void hi3519dv500_post_tuning(struct sdhci_host *host)
+{
+	u16 ctrl;
+
+	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	ctrl |= SDHCI_CTRL_TUNED_CLK;
+	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
+
+	hi3519dv500_restore_ints(host);
+}
+
+static void hi3519dv500_enable_edge_tuning(struct sdhci_host *host)
+{
+	u32 reg;
+
+	reg = sdhci_readl(host, HI3519DV500_MULTI_CYCLE);
+	reg |= HI3519DV500_EDGE_DETECT_EN;
+	sdhci_writel(host, reg, HI3519DV500_MULTI_CYCLE);
+}
+
+static void hi3519dv500_disable_edge_tuning(struct sdhci_host *host)
+{
+	u32 reg;
+
+	reg = sdhci_readl(host, HI3519DV500_MULTI_CYCLE);
+	reg &= ~HI3519DV500_EDGE_DETECT_EN;
+	sdhci_writel(host, reg, HI3519DV500_MULTI_CYCLE);
+}
+
+/*
+ * Coarse scan: probe every HI3519DV500_TUNING_STEP-th phase and let the
+ * controller edge detector report the window borders as indexes into the
+ * phase scale.
+ */
+static int hi3519dv500_get_best_edges(struct sdhci_host *host, u32 opcode,
+				      unsigned int *edge_p2f_ptr,
+				      unsigned int *edge_f2p_ptr)
+{
+	unsigned int index, val;
+	unsigned int start = 0;
+	unsigned int end = HI3519DV500_PHASE_SCALE / HI3519DV500_TUNING_STEP;
+	unsigned int edge_p2f = start;
+	unsigned int edge_f2p = end;
+	bool found = false;
+	bool prev_found = false;
+	int err;
+
+	for (index = start; index <= end; index++) {
+		hi3519dv500_select_sample_phase(host,
+						index * HI3519DV500_TUNING_STEP);
+
+		err = hi3519dv500_send_tuning(host, opcode);
+		if (!err) {
+			val = sdhci_readl(host, HI3519DV500_MULTI_CYCLE);
+			found = (val & HI3519DV500_FOUND_EDGE) != 0;
+		} else {
+			found = true;
+		}
+
+		if (prev_found && !found)
+			edge_f2p = index;
+		else if (!prev_found && found)
+			edge_p2f = index;
+
+		if (edge_p2f != start && edge_f2p != end)
+			break;
+
+		prev_found = found;
+		found = false;
+	}
+
+	if (edge_p2f == start && edge_f2p == end)
+		return -ENODATA;
+
+	*edge_p2f_ptr = edge_p2f;
+	*edge_f2p_ptr = edge_f2p;
+
+	return 0;
+}
+
+/*
+ * Fine scan: step through the window found by the coarse scan one phase
+ * at a time and pick the phase in the middle of the valid range.
+ */
+static unsigned int hi3519dv500_get_best_phase(struct sdhci_host *host,
+					       u32 opcode,
+					       unsigned int edge_p2f,
+					       unsigned int edge_f2p)
+{
+	unsigned int index, start, end;
+	unsigned int fall, rise, phase;
+	bool fall_updated = false;
+	int err, prev_err = 0;
+
+	start = edge_p2f * HI3519DV500_TUNING_STEP;
+	end = edge_f2p * HI3519DV500_TUNING_STEP;
+	if (end <= start)
+		end += HI3519DV500_PHASE_SCALE;
+
+	fall = start;
+	rise = end;
+	for (index = start; index <= end; index++) {
+		hi3519dv500_select_sample_phase(host,
+						index % HI3519DV500_PHASE_SCALE);
+
+		err = hi3519dv500_send_tuning(host, opcode);
+		if (err)
+			dev_dbg(mmc_dev(host->mmc),
+				"send tuning CMD%u fail! phase:%d err:%d\n",
+				opcode, index, err);
+
+		if (err && index == start) {
+			if (!fall_updated) {
+				fall_updated = true;
+				fall = start;
+			}
+		} else if (!prev_err && err) {
+			if (!fall_updated) {
+				fall_updated = true;
+				fall = index;
+			}
+		}
+
+		if (prev_err && !err)
+			rise = index;
+
+		if (err && index == end)
+			rise = end;
+
+		prev_err = err;
+	}
+
+	phase = ((fall + rise) / 2 + HI3519DV500_PHASE_SCALE / 2) %
+		HI3519DV500_PHASE_SCALE;
+
+	dev_info(mmc_dev(host->mmc),
+		 "tuning done! valid phase shift [%u, %u] Final Phase:%u\n",
+		 rise % HI3519DV500_PHASE_SCALE,
+		 fall % HI3519DV500_PHASE_SCALE, phase);
+
+	return phase;
+}
+
+static int hi3519dv500_execute_tuning(struct sdhci_host *host, u32 opcode)
+{
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	unsigned int edge_p2f, edge_f2p;
+	unsigned int phase;
+	int err;
+
+	hi3519dv500_pre_tuning(host);
+	hi3519dv500_enable_edge_tuning(host);
+
+	err = hi3519dv500_get_best_edges(host, opcode, &edge_p2f, &edge_f2p);
+	if (err) {
+		dev_err(mmc_dev(host->mmc), "tuning failed: no edge found\n");
+		hi3519dv500_disable_edge_tuning(host);
+		hi3519dv500_restore_ints(host);
+		return err;
+	}
+
+	hi3519dv500_disable_edge_tuning(host);
+
+	phase = hi3519dv500_get_best_phase(host, opcode, edge_p2f, edge_f2p);
+
+	hi_priv->tuning_phase = phase;
+	hi3519dv500_select_sample_phase(host, phase);
+	hi3519dv500_post_tuning(host);
+
+	return 0;
+}
+
+/* Select the pinctrl state matching the new speed mode. Boards only
+ * define the states of the speed modes they actually use, so keep the
+ * current pin configuration when the board does not provide one.
+ */
+static void hi3519dv500_select_pin_state(struct sdhci_host *host)
+{
+	static const char * const state_names[MMC_TIMING_MMC_HS400 + 1] = {
+		[MMC_TIMING_LEGACY] = PINCTRL_STATE_DEFAULT,
+		[MMC_TIMING_MMC_HS] = "mmc-hs",
+		[MMC_TIMING_SD_HS] = "sd-hs",
+		[MMC_TIMING_UHS_SDR12] = "sdr12",
+		[MMC_TIMING_UHS_SDR25] = "sdr25",
+		[MMC_TIMING_UHS_SDR50] = "sdr50",
+		[MMC_TIMING_UHS_SDR104] = "sdr104",
+		[MMC_TIMING_MMC_HS200] = "hs200",
+		[MMC_TIMING_MMC_HS400] = "hs400",
+	};
+	struct hi3519dv500_priv *hi_priv = hi3519dv500_get_priv(host);
+	unsigned int timing_idx = host->timing;
+	struct pinctrl_state *state;
+	const char *name;
+
+	if (!hi_priv->pinctrl)
+		return;
+
+	/* HS400 enhanced strobe keeps the HS400 pin state */
+	if (timing_idx > MMC_TIMING_MMC_HS400)
+		timing_idx = MMC_TIMING_MMC_HS400;
+
+	name = state_names[timing_idx];
+	if (!name) {
+		dev_dbg(mmc_dev(host->mmc),
+			"no pin state for timing %u, keeping current\n",
+			timing_idx);
+		return;
+	}
+
+	state = pinctrl_lookup_state(hi_priv->pinctrl, name);
+	if (IS_ERR(state)) {
+		dev_dbg(mmc_dev(host->mmc),
+			"pin state '%s' not provided, keeping current\n", name);
+		return;
+	}
+
+	pinctrl_select_state(hi_priv->pinctrl, state);
+}
+
+static void hi3519dv500_set_uhs_signaling(struct sdhci_host *host,
+					  unsigned int timing)
+{
+	hi3519dv500_set_emmc_card(host);
+
+	dwcmshc_set_uhs_signaling(host, timing);
+
+	/* sdhci_set_ios() calls this hook before updating host->timing, but
+	 * the pin state selection below depends on the new timing
+	 */
+	host->timing = timing;
+
+	hi3519dv500_select_pin_state(host);
+}
+
+static void hi3519dv500_hw_reset(struct sdhci_host *host)
+{
+	/* drive the RST_n pad low for 10 us, then back high */
+	sdhci_writel(host, 0, HI3519DV500_EMMC_HW_RESET);
+	udelay(10);
+	sdhci_writel(host, 1, HI3519DV500_EMMC_HW_RESET);
+	udelay(200);
+}
+
 static const struct sdhci_ops sdhci_dwcmshc_ops = {
 	.set_clock		= sdhci_set_clock,
 	.set_bus_width		= sdhci_set_bus_width,
@@ -2083,6 +2865,18 @@ static const struct sdhci_ops sdhci_dwcmshc_eic7700_ops = {
 	.irq = dwcmshc_cqe_irq_handler,
 	.adma_write_desc = dwcmshc_adma_write_desc,
 	.platform_execute_tuning = sdhci_eic7700_executing_tuning,
+};
+
+static const struct sdhci_ops sdhci_dwcmshc_hi3519dv500_ops = {
+	.set_clock		= hi3519dv500_set_clock,
+	.set_bus_width		= sdhci_set_bus_width,
+	.set_uhs_signaling	= hi3519dv500_set_uhs_signaling,
+	.get_max_clock		= dwcmshc_get_max_clock,
+	.reset			= dwcmshc_reset,
+	.adma_write_desc	= dwcmshc_adma_write_desc,
+	.platform_execute_tuning = hi3519dv500_execute_tuning,
+	.hw_reset		= hi3519dv500_hw_reset,
+	.irq			= dwcmshc_cqe_irq_handler,
 };
 
 static const struct sdhci_ops sdhci_dwcmshc_k230_ops = {
@@ -2205,6 +2999,17 @@ static const struct dwcmshc_pltfm_data sdhci_dwcmshc_eic7700_pdata = {
 			   SDHCI_QUIRK2_CLOCK_DIV_ZERO_BROKEN,
 	},
 	.init = eic7700_init,
+};
+
+static const struct dwcmshc_pltfm_data sdhci_dwcmshc_hi3519dv500_pdata = {
+	.pdata = {
+		.ops = &sdhci_dwcmshc_hi3519dv500_ops,
+		.quirks = SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
+			  SDHCI_QUIRK_BROKEN_TIMEOUT_VAL,
+		.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
+	},
+	.init = hi3519dv500_init,
+	.postinit = hi3519dv500_postinit,
 };
 
 static const struct k230_pltfm_data k230_emmc_data = {
@@ -2373,6 +3178,10 @@ static const struct of_device_id sdhci_dwcmshc_dt_ids[] = {
 		.data = &sdhci_dwcmshc_eic7700_pdata,
 	},
 	{
+		.compatible = "hisilicon,hi3519dv500-dwcmshc",
+		.data = &sdhci_dwcmshc_hi3519dv500_pdata,
+	},
+	{
 		.compatible = "hpe,gsc-dwcmshc",
 		.data = &sdhci_dwcmshc_hpe_gsc_pdata,
 	},
@@ -2480,8 +3289,10 @@ static int dwcmshc_probe(struct platform_device *pdev)
 
 	/* Setup Command Queue Engine if enabled */
 	if (device_property_read_bool(&pdev->dev, "supports-cqe")) {
-		priv->vendor_specific_area2 =
-			sdhci_readw(host, DWCMSHC_P_VENDOR_AREA2);
+		/* keep the value preset by the variant's init callback */
+		if (!priv->vendor_specific_area2)
+			priv->vendor_specific_area2 =
+				sdhci_readw(host, DWCMSHC_P_VENDOR_AREA2);
 
 		dwcmshc_cqhci_init(host, pdev, pltfm_data);
 	}
