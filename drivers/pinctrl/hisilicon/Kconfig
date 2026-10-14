@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config PINCTRL_HI3519DV500
+	tristate "HiSilicon Hi3519DV500 SoC pinctrl driver"
+	depends on OF
+	depends on ARCH_HISI || COMPILE_TEST
+	select GENERIC_PINCTRL_GROUPS
+	select GENERIC_PINMUX_FUNCTIONS
+	select GENERIC_PINCONF
+	help
+	  Say Y to select the pinctrl driver for the HiSilicon Hi3519DV500
+	  SoC. The pin controller allows selecting the mux function of each
+	  pin and configuring its bias, drive strength and slew rate.
+	  This driver can also be built as a module called
+	  pinctrl-hi3519dv500.

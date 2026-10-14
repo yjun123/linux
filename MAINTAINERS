@@ -11724,6 +11724,14 @@ F:	Documentation/devicetree/bindings/clock/hisilicon,hi3519dv500-clock.yaml
 F:	drivers/clk/hisilicon/clk-hi3519dv500.c
 F:	include/dt-bindings/clock/hi3519dv500-clock.h
 
+HISILICON HI3519DV500 PINCTRL DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-gpio@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/pinctrl/hisilicon,hi3519dv500-ioconfig.yaml
+F:	drivers/pinctrl/hisilicon/pinctrl-hi3519dv500.c
+F:	include/dt-bindings/pinctrl/pinctrl-hi3519dv500.h
+
 HISILICON LPC BUS DRIVER
 M:	Jay Fang <f.fangjian@huawei.com>
 S:	Maintained
