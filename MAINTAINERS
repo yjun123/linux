@@ -11790,6 +11790,14 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/thermal/hisilicon,tsensor.yaml
 F:	drivers/thermal/hisi_thermal.c
 
+HISILICON HI3519DV500 USB DRIVER
+M:	Jun Yan <jerrysteve1101@gmail.com>
+L:	linux-usb@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/phy/hisilicon,hi3519dv500-usb-phy.yaml
+F:	Documentation/devicetree/bindings/usb/hisilicon,hi3519dv500-dwc3.yaml
+F:	drivers/phy/hisilicon/phy-hi3519dv500-usb.c
+
 HISILICON LPC BUS DRIVER
 M:	Jay Fang <f.fangjian@huawei.com>
 S:	Maintained
