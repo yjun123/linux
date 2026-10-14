@@ -17,6 +17,7 @@ properties:
     enum:
       - hisilicon,tsensor
       - hisilicon,hi3660-tsensor
+      - hisilicon,hi3519dv500-tsensor
 
   reg:
     maxItems: 1
