@@ -960,6 +960,13 @@
 			status = "disabled";
 		};
 
+		rtc: rtc@11110000 {
+			compatible = "hisilicon,hi3519dv500-rtc";
+			reg = <0x11110000 0x10000>;
+			interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		ioconfig2: ioconfig@179f0000 {
 			compatible = "hisilicon,hi3519dv500-ioconfig2";
 			reg = <0x179f0000 0x10000>;
