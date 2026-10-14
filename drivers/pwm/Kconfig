@@ -292,6 +292,18 @@ config PWM_HIBVT
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-hibvt.
 
+config PWM_HI3519DV500
+	tristate "HiSilicon Hi3519DV500 PWM support"
+	depends on ARCH_HISI || COMPILE_TEST
+	depends on HAS_IOMEM
+	default ARCH_HISI
+	help
+	  Generic PWM framework driver for the PWM controllers found on
+	  the HiSilicon Hi3519DV500 SoC.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called pwm-hi3519dv500.
+
 config PWM_IMG
 	tristate "Imagination Technologies PWM driver"
 	depends on HAS_IOMEM
