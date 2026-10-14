@@ -8,6 +8,8 @@
  */
 
 #include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/regmap.h>
@@ -21,6 +23,10 @@
 #define EIC7700_HSP_BUS_CLKEN_GS	BIT(16)
 #define EIC7700_HSP_AXI_LP_XM_CSYSREQ	BIT(0)
 #define EIC7700_HSP_AXI_LP_XS_CSYSREQ	BIT(16)
+
+#define HI3519DV500_USB3_CTRL_MISC_OFFSET	0x208
+#define HI3519DV500_USB3_DISABLE_SUPER_SPEED	BIT(9)
+#define HI3519DV500_PINOUT_USB_VALUE		0x1201
 
 struct dwc3_generic {
 	struct device		*dev;
@@ -81,6 +87,33 @@ static int dwc3_spacemit_k1_init(struct dwc3_generic *dwc3g)
 		if (ret && ret != -ENODEV)
 			return dev_err_probe(dev, ret, "failed to enable VBUS\n");
 	}
+
+	return 0;
+}
+
+static int dwc3_hi3519dv500_init(struct dwc3_generic *dwc3g)
+{
+	struct platform_device *pdev = to_platform_device(dwc3g->dev);
+	void __iomem *peri;
+	void __iomem *pinout;
+	u32 val;
+
+	peri = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(peri))
+		return PTR_ERR(peri);
+
+	pinout = devm_platform_ioremap_resource(pdev, 2);
+	if (IS_ERR(pinout))
+		return PTR_ERR(pinout);
+
+	/* make sure SuperSpeed is not disabled through the misc register */
+	val = readl(peri + HI3519DV500_USB3_CTRL_MISC_OFFSET);
+	val &= ~HI3519DV500_USB3_DISABLE_SUPER_SPEED;
+	writel(val, peri + HI3519DV500_USB3_CTRL_MISC_OFFSET);
+
+	/* configure the USB pinout */
+	writel(HI3519DV500_PINOUT_USB_VALUE, pinout);
+	usleep_range(200, 300); /* delay 200 us to wait VBUS stable */
 
 	return 0;
 }
@@ -231,12 +264,18 @@ static const struct dwc3_generic_config eic7700_dwc3 =  {
 	.properties = DWC3_DEFAULT_PROPERTIES,
 };
 
+static const struct dwc3_generic_config hi3519dv500_dwc3 = {
+	.init = dwc3_hi3519dv500_init,
+	.properties = DWC3_DEFAULT_PROPERTIES,
+};
+
 static const struct of_device_id dwc3_generic_of_match[] = {
 	{ .compatible = "spacemit,k1-dwc3", &spacemit_k1_dwc3},
 	{ .compatible = "spacemit,k3-dwc3", },
 	{ .compatible = "fsl,ls1028a-dwc3", &fsl_ls1028_dwc3},
 	{ .compatible = "eswin,eic7700-dwc3", &eic7700_dwc3},
 	{ .compatible = "starfive,jhb100-dwc3", },
+	{ .compatible = "hisilicon,hi3519dv500-dwc3", &hi3519dv500_dwc3},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, dwc3_generic_of_match);
