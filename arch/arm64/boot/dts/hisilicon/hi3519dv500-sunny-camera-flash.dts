@@ -32,6 +32,62 @@
 	status = "okay";
 };
 
+&i2c3 {
+	pinctrl-0 = <&i2c3_sda_pins &i2c3_scl_pins>;
+	clock-frequency = <400000>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "giantec,gt24p128f", "atmel,24c128";
+		reg = <0x50>;
+		pagesize = <64>;
+		size = <16384>;
+	};
+};
+
+&i2c4 {
+	pinctrl-0 = <&i2c4_sda_pins &i2c4_scl_pins>;
+	clock-frequency = <400000>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "giantec,gt24p128f", "atmel,24c128";
+		reg = <0x50>;
+		pagesize = <64>;
+		size = <16384>;
+	};
+};
+
+&ioconfig2 {
+	i2c3_sda_pins: i2c3-sda-pins {
+		pinmux = <HI3519DV500_PINMUX(0x28, 2)>;	/* I2C3_SDA */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+
+	i2c3_scl_pins: i2c3-scl-pins {
+		pinmux = <HI3519DV500_PINMUX(0x2c, 2)>;	/* I2C3_SCL */
+		bias-pull-up;
+		drive-strength = <3>;
+		slew-rate = <1>;
+	};
+
+	i2c4_sda_pins: i2c4-sda-pins {
+		pinmux = <HI3519DV500_PINMUX(0x30, 2)>;	/* I2C4_SDA */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+
+	i2c4_scl_pins: i2c4-scl-pins {
+		pinmux = <HI3519DV500_PINMUX(0x34, 2)>;	/* I2C4_SCL */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+};
+
 &gpio5 {
 	status = "okay";
 };
