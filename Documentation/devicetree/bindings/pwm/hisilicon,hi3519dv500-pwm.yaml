@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/pwm/hisilicon,hi3519dv500-pwm.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 PWM controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description:
+  The Hi3519DV500 SoC has three independent PWM controllers with six, six
+  and five channels.  Every channel has a 32 bit period and duty cycle
+  register at a 0x100 stride, and a control register with enable, polarity
+  and clock prescaler fields.
+
+allOf:
+  - $ref: pwm.yaml#
+
+properties:
+  compatible:
+    enum:
+      - hisilicon,hi3519dv500-pwm0
+      - hisilicon,hi3519dv500-pwm1
+      - hisilicon,hi3519dv500-pwm2
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+  "#pwm-cells":
+    const: 3
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - resets
+  - "#pwm-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/hi3519dv500-clock.h>
+
+    pwm0: pwm@11080000 {
+        compatible = "hisilicon,hi3519dv500-pwm0";
+        reg = <0x11080000 0x1000>;
+        clocks = <&crg HI3519DV500_PWM0_CLK>;
+        resets = <&crg 0x4588 0>;
+        #pwm-cells = <3>;
+    };
+...
