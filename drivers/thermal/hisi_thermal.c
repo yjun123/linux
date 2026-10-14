@@ -37,6 +37,22 @@
 #define HI3660_INT_EN(chan)		(HI3660_OFFSET(chan) + 0x2C)
 #define HI3660_INT_CLR(chan)		(HI3660_OFFSET(chan) + 0x30)
 
+#define HI3519DV500_TSENSOR_CTRL0		(0x00)
+#define  HI3519DV500_TSENSOR_EN			BIT(31)
+#define  HI3519DV500_TSENSOR_MONITOR_EN		BIT(30)
+#define  HI3519DV500_TSENSOR_MONITOR_PERIOD(x)	((GENMASK(7, 0) & (x)) << 20)
+#define  HI3519DV500_TSENSOR_UPLIMIT(x)		((GENMASK(9, 0) & (x)) << 10)
+#define  HI3519DV500_TSENSOR_UPLIMIT_MASK	GENMASK(19, 10)
+#define  HI3519DV500_TSENSOR_LOWLIMIT_MASK	GENMASK(9, 0)
+#define  HI3519DV500_TSENSOR_TEMP_CT_SEL(x)	((GENMASK(1, 0) & (x)) << 2)
+#define HI3519DV500_TSENSOR_CTRL1		(0x04)
+#define HI3519DV500_TSENSOR_CTRL2		(0x08)
+#define  HI3519DV500_TSENSOR_RESULT0		GENMASK(9, 0)
+#define HI3519DV500_TSENSOR_INT_MASK		(0x20)
+#define  HI3519DV500_TSENSOR_UP_WARN_INT_MASK	BIT(0)
+#define HI3519DV500_TSENSOR_INT_CLR		(0x24)
+#define  HI3519DV500_TSENSOR_UP_WARN_INT_CLR	BIT(0)
+
 #define HI6220_TEMP_BASE			(-60000)
 #define HI6220_TEMP_RESET			(100000)
 #define HI6220_TEMP_STEP			(785)
@@ -46,6 +62,12 @@
 #define HI3660_TEMP_STEP		(205)
 #define HI3660_TEMP_LAG			(4000)
 
+#define HI3519DV500_TEMP_BASE		(-40000)
+#define HI3519DV500_TEMP_STEP		(205)
+#define HI3519DV500_TEMP_RESULT_MIN	(132)
+#define HI3519DV500_CONVERT_TIME	(0)	/* 0.512 ms */
+#define HI3519DV500_MONITOR_PERIOD	(5)	/* 5 * 2 = 10 ms */
+
 #define HI6220_CLUSTER0_SENSOR		2
 #define HI6220_CLUSTER1_SENSOR		1
 
@@ -53,6 +75,8 @@
 #define HI3660_BIG_SENSOR		1
 #define HI3660_G3D_SENSOR		2
 #define HI3660_MODEM_SENSOR		3
+
+#define HI3519DV500_THERMAL_SENSOR	1
 
 struct hisi_thermal_data;
 
@@ -125,6 +149,33 @@ static inline int hi3660_thermal_step_to_temp(int step)
 static inline int hi3660_thermal_temp_to_step(int temp)
 {
 	return DIV_ROUND_UP(temp - HI3660_TEMP_BASE, HI3660_TEMP_STEP);
+}
+
+/*
+ * for Hi3519DV500,
+ *	Step: 205 millidegree
+ *	Temperature base: -40°C
+ *
+ * The register value is 10 bit wide with a 132 step offset.
+ *
+ * The temperature from the steps:
+ *
+ *	Temp = TempBase + 205 * (steps - 132)
+ *
+ * and the steps from the temperature:
+ *
+ *	steps = (Temp - TempBase) / 205 + 132
+ */
+static inline int hi3519dv500_thermal_step_to_temp(int step)
+{
+	return HI3519DV500_TEMP_BASE +
+	       HI3519DV500_TEMP_STEP * (step - HI3519DV500_TEMP_RESULT_MIN);
+}
+
+static inline int hi3519dv500_thermal_temp_to_step(int temp)
+{
+	return DIV_ROUND_UP(temp - HI3519DV500_TEMP_BASE, HI3519DV500_TEMP_STEP) +
+	       HI3519DV500_TEMP_RESULT_MIN;
 }
 
 /*
@@ -239,6 +290,81 @@ static inline int hi3660_thermal_get_temperature(void __iomem *addr, int id)
 	return hi3660_thermal_step_to_temp(readl(addr + HI3660_TEMP(id)));
 }
 
+static inline void hi3519dv500_thermal_enable(void __iomem *addr, int value)
+{
+	u32 reg_val = readl(addr + HI3519DV500_TSENSOR_CTRL0);
+
+	if (value)
+		reg_val |= HI3519DV500_TSENSOR_EN;
+	else
+		reg_val &= ~HI3519DV500_TSENSOR_EN;
+
+	writel(reg_val, addr + HI3519DV500_TSENSOR_CTRL0);
+}
+
+static inline void hi3519dv500_thermal_monitor_enable(void __iomem *addr,
+						      int value)
+{
+	u32 reg_val = readl(addr + HI3519DV500_TSENSOR_CTRL0);
+
+	if (value)
+		reg_val |= HI3519DV500_TSENSOR_MONITOR_EN;
+	else
+		reg_val &= ~HI3519DV500_TSENSOR_MONITOR_EN;
+
+	writel(reg_val, addr + HI3519DV500_TSENSOR_CTRL0);
+}
+
+static inline void hi3519dv500_thermal_monitor_period_set(void __iomem *addr,
+							  int value)
+{
+	writel(readl(addr + HI3519DV500_TSENSOR_CTRL0) |
+	       HI3519DV500_TSENSOR_MONITOR_PERIOD(value),
+	       addr + HI3519DV500_TSENSOR_CTRL0);
+}
+
+static inline void hi3519dv500_thermal_convert_time_set(void __iomem *addr,
+							int value)
+{
+	writel(readl(addr + HI3519DV500_TSENSOR_CTRL0) |
+	       HI3519DV500_TSENSOR_TEMP_CT_SEL(value),
+	       addr + HI3519DV500_TSENSOR_CTRL0);
+}
+
+static inline void hi3519dv500_thermal_alarm_set_uplimit(void __iomem *addr,
+							 int value)
+{
+	writel(readl(addr + HI3519DV500_TSENSOR_CTRL0) |
+	       HI3519DV500_TSENSOR_UPLIMIT(value),
+	       addr + HI3519DV500_TSENSOR_CTRL0);
+}
+
+static inline void hi3519dv500_thermal_alarm_clear(void __iomem *addr,
+						   int value)
+{
+	writel(value, addr + HI3519DV500_TSENSOR_INT_CLR);
+}
+
+static inline void hi3519dv500_thermal_alarm_uplimit_enable(void __iomem *addr,
+							    int value)
+{
+	u32 reg_val = readl(addr + HI3519DV500_TSENSOR_INT_MASK);
+
+	if (value)
+		reg_val |= HI3519DV500_TSENSOR_UP_WARN_INT_MASK;
+	else
+		reg_val &= ~HI3519DV500_TSENSOR_UP_WARN_INT_MASK;
+
+	writel(reg_val, addr + HI3519DV500_TSENSOR_INT_MASK);
+}
+
+static inline int hi3519dv500_thermal_get_temperature(void __iomem *addr)
+{
+	return hi3519dv500_thermal_step_to_temp(
+		readl(addr + HI3519DV500_TSENSOR_CTRL2) &
+		HI3519DV500_TSENSOR_RESULT0);
+}
+
 /*
  * Temperature configuration register - Sensor selection
  *
@@ -287,6 +413,15 @@ static int hi3660_thermal_irq_handler(struct hisi_thermal_sensor *sensor)
 	return 0;
 }
 
+static int hi3519dv500_thermal_irq_handler(struct hisi_thermal_sensor *sensor)
+{
+	struct hisi_thermal_data *data = sensor->data;
+
+	hi3519dv500_thermal_alarm_clear(data->regs,
+					HI3519DV500_TSENSOR_UP_WARN_INT_CLR);
+	return 0;
+}
+
 static int hi6220_thermal_get_temp(struct hisi_thermal_sensor *sensor)
 {
 	struct hisi_thermal_data *data = sensor->data;
@@ -299,6 +434,13 @@ static int hi3660_thermal_get_temp(struct hisi_thermal_sensor *sensor)
 	struct hisi_thermal_data *data = sensor->data;
 
 	return hi3660_thermal_get_temperature(data->regs, sensor->id);
+}
+
+static int hi3519dv500_thermal_get_temp(struct hisi_thermal_sensor *sensor)
+{
+	struct hisi_thermal_data *data = sensor->data;
+
+	return hi3519dv500_thermal_get_temperature(data->regs);
 }
 
 static int hi6220_thermal_disable_sensor(struct hisi_thermal_sensor *sensor)
@@ -321,6 +463,17 @@ static int hi3660_thermal_disable_sensor(struct hisi_thermal_sensor *sensor)
 
 	/* disable sensor module */
 	hi3660_thermal_alarm_enable(data->regs, sensor->id, 0);
+	return 0;
+}
+
+static int hi3519dv500_thermal_disable_sensor(struct hisi_thermal_sensor *sensor)
+{
+	struct hisi_thermal_data *data = sensor->data;
+
+	/* disable sensor module */
+	hi3519dv500_thermal_enable(data->regs, 0);
+	hi3519dv500_thermal_alarm_uplimit_enable(data->regs, 0);
+
 	return 0;
 }
 
@@ -384,6 +537,41 @@ static int hi3660_thermal_enable_sensor(struct hisi_thermal_sensor *sensor)
 	return 0;
 }
 
+static int hi3519dv500_thermal_enable_sensor(struct hisi_thermal_sensor *sensor)
+{
+	unsigned int value;
+	struct hisi_thermal_data *data = sensor->data;
+
+	/* disable interrupt */
+	hi3519dv500_thermal_alarm_uplimit_enable(data->regs, 0);
+
+	/* disable tsensor */
+	hi3519dv500_thermal_enable(data->regs, 0);
+
+	/* setting convert time */
+	hi3519dv500_thermal_convert_time_set(data->regs,
+					     HI3519DV500_CONVERT_TIME);
+
+	/* setting monitor period */
+	hi3519dv500_thermal_monitor_period_set(data->regs,
+					       HI3519DV500_MONITOR_PERIOD);
+	hi3519dv500_thermal_monitor_enable(data->regs, 1);
+
+	/* set interrupt threshold */
+	value = hi3519dv500_thermal_temp_to_step(sensor->thres_temp);
+	hi3519dv500_thermal_alarm_set_uplimit(data->regs, value);
+
+	/* enable tsensor */
+	hi3519dv500_thermal_enable(data->regs, 1);
+
+	/* enable interrupt */
+	hi3519dv500_thermal_alarm_clear(data->regs,
+					HI3519DV500_TSENSOR_UP_WARN_INT_CLR);
+	hi3519dv500_thermal_alarm_uplimit_enable(data->regs, 1);
+
+	return 0;
+}
+
 static int hi6220_thermal_probe(struct hisi_thermal_data *data)
 {
 	struct platform_device *pdev = data->pdev;
@@ -419,6 +607,25 @@ static int hi3660_thermal_probe(struct hisi_thermal_data *data)
 
 	data->sensor[0].id = HI3660_BIG_SENSOR;
 	data->sensor[0].irq_name = "tsensor_a73";
+	data->sensor[0].data = data;
+
+	return 0;
+}
+
+static int hi3519dv500_thermal_probe(struct hisi_thermal_data *data)
+{
+	struct platform_device *pdev = data->pdev;
+	struct device *dev = &pdev->dev;
+
+	data->nr_sensors = 1;
+
+	data->sensor = devm_kcalloc(dev, data->nr_sensors,
+				    sizeof(*data->sensor), GFP_KERNEL);
+	if (!data->sensor)
+		return -ENOMEM;
+
+	data->sensor[0].id = HI3519DV500_THERMAL_SENSOR;
+	data->sensor[0].irq_name = "tsensor";
 	data->sensor[0].data = data;
 
 	return 0;
@@ -514,6 +721,14 @@ static const struct hisi_thermal_ops hi3660_ops = {
 	.probe		= hi3660_thermal_probe,
 };
 
+static const struct hisi_thermal_ops hi3519dv500_ops = {
+	.get_temp	= hi3519dv500_thermal_get_temp,
+	.enable_sensor	= hi3519dv500_thermal_enable_sensor,
+	.disable_sensor	= hi3519dv500_thermal_disable_sensor,
+	.irq_handler	= hi3519dv500_thermal_irq_handler,
+	.probe		= hi3519dv500_thermal_probe,
+};
+
 static const struct of_device_id of_hisi_thermal_match[] = {
 	{
 		.compatible = "hisilicon,tsensor",
@@ -522,6 +737,10 @@ static const struct of_device_id of_hisi_thermal_match[] = {
 	{
 		.compatible = "hisilicon,hi3660-tsensor",
 		.data = &hi3660_ops,
+	},
+	{
+		.compatible = "hisilicon,hi3519dv500-tsensor",
+		.data = &hi3519dv500_ops,
 	},
 	{ /* end */ }
 };
