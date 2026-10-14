@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/rtc/hisilicon,hi3519dv500-rtc.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon Hi3519DV500 Real Time Clock
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description:
+  The Hi3519DV500 SoC has an always-on RTC that keeps second, minute,
+  hour and day counters, and can raise an interrupt when the counters
+  match the programmed alarm value.
+
+allOf:
+  - $ref: rtc.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,hi3519dv500-rtc
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+    description: Alarm interrupt.
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    rtc@11110000 {
+        compatible = "hisilicon,hi3519dv500-rtc";
+        reg = <0x11110000 0x10000>;
+        interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+    };
+...
