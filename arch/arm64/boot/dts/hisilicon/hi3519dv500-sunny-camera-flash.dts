@@ -159,6 +159,18 @@
 	};
 };
 
+&usb {
+	status = "okay";
+};
+
+&usb2phy0 {
+	status = "okay";
+};
+
+&usb3phy0 {
+	status = "okay";
+};
+
 &ioconfig1 {
 	spi3_pins: spi3-pins {
 		pinmux = <HI3519DV500_PINMUX(0x88, 3)>,	/* SPI3_SCLK */
