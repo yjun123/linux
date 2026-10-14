@@ -18,7 +18,11 @@ description: |
 
 properties:
   compatible:
-    const: hisilicon,hi3519dv500-clock
+    oneOf:
+      - const: hisilicon,hi3519dv500-clock
+      - items:
+          - const: hisilicon,hi3519dv500-clock
+          - const: syscon
 
   reg:
     maxItems: 1
