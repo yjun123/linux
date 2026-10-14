@@ -765,6 +765,33 @@
 			status = "disabled";
 		};
 
+		pwm0: pwm@11080000 {
+			compatible = "hisilicon,hi3519dv500-pwm0";
+			reg = <0x11080000 0x1000>;
+			clocks = <&crg HI3519DV500_PWM0_CLK>;
+			resets = <&crg 0x4588 0>;
+			#pwm-cells = <3>;
+			status = "disabled";
+		};
+
+		pwm1: pwm@11081000 {
+			compatible = "hisilicon,hi3519dv500-pwm1";
+			reg = <0x11081000 0x1000>;
+			clocks = <&crg HI3519DV500_PWM1_CLK>;
+			resets = <&crg 0x4590 0>;
+			#pwm-cells = <3>;
+			status = "disabled";
+		};
+
+		pwm2: pwm@11082000 {
+			compatible = "hisilicon,hi3519dv500-pwm2";
+			reg = <0x11082000 0x1000>;
+			clocks = <&crg HI3519DV500_PWM2_CLK>;
+			resets = <&crg 0x4598 0>;
+			#pwm-cells = <3>;
+			status = "disabled";
+		};
+
 		gpio0: gpio@11090000 {
 			compatible = "arm,pl061", "arm,primecell";
 			reg = <0x11090000 0x1000>;
