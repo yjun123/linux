@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/spi/hisilicon,fmcv100-spi-flash.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: HiSilicon FMCv100 serial flash controller
+
+maintainers:
+  - Jun Yan <jerrysteve1101@gmail.com>
+
+description: |
+  The FMCv100 flash controller of the HiSilicon Hi3519DV500 SoC talks
+  to one flash die at a time in one of three mutually exclusive modes:
+  SPI NOR, SPI NAND or raw NAND.  This binding describes the serial
+  modes: the controller is driven as a spi-mem controller and serves
+  either a SPI NOR chip ("jedec,spi-nor" child) or a SPI NAND chip
+  with on-die ECC ("spi-nand" child).  The controller picks the flash
+  type at probe time from the compatible of the child node, and a
+  board wires and describes exactly one die.
+
+allOf:
+  - $ref: spi-controller.yaml#
+
+properties:
+  compatible:
+    const: hisilicon,fmcv100-spi-flash
+
+  reg:
+    items:
+      - description: control registers
+      - description: memory window used as the data buffer
+
+  reg-names:
+    items:
+      - const: control
+      - const: memory
+
+  clocks:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - clocks
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/hi3519dv500-clock.h>
+
+    spi@10000000 {
+        compatible = "hisilicon,fmcv100-spi-flash";
+        reg = <0x10000000 0x1000>, <0x0f000000 0x1000000>;
+        reg-names = "control", "memory";
+        clocks = <&crg HI3519DV500_FMC_CLK>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        flash@0 {
+            compatible = "jedec,spi-nor";
+            reg = <0>;
+            spi-max-frequency = <24000000>;
+        };
+    };
+...
