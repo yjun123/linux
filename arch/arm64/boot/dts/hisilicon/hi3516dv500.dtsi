@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/*
+ * dts file for Hisilicon Hi3516DV500 SoC
+ *
+ * Copyright (c) 2020-2023 HiSilicon Technologies Co., Ltd.
+ */
+
+#include "hi3519dv500.dtsi"
+
+/ {
+	compatible = "hisilicon,hi3516dv500";
+};
+
+/*
+ * The Hi3516DV500 has no second MIPI RX input: the upper part of the
+ * ioconfig2 block (offsets 0x48 to 0xa4) carries plain GPIO13/GPIO14
+ * pads instead, described by the Hi3516DV500 ioconfig2 variant.
+ */
+&ioconfig2 {
+	compatible = "hisilicon,hi3516dv500-ioconfig2";
+};
