@@ -15,6 +15,11 @@ properties:
 
   compatible:
     oneOf:
+      - description: HiSilicon Hi3519DV500 DEMB boards.
+        items:
+          - const: hisilicon,hi3519dv500-demb
+          - const: hisilicon,hi3519dv500
+
       - description: Hi3660 based boards.
         items:
           - const: hisilicon,hi3660-hikey960
