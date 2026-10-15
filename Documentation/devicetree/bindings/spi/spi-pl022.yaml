@@ -29,7 +29,16 @@ properties:
       - const: arm,primecell
 
   reg:
-    maxItems: 1
+    minItems: 1
+    maxItems: 2
+    items:
+      - description: SSP registers
+      - description: |
+          The chip select route register, present on derivatives
+          that drive their chip select pads through the SSP enable
+          bit and pick the pad of controllers with two selects
+          through an external register, like the HiSilicon PL022
+          derivative.
 
   interrupts:
     maxItems: 1
