@@ -240,6 +240,62 @@ static const struct hi3519dv500_pinctrl_data hi3519dv500_ioconfig2_data = {
 	.npins = ARRAY_SIZE(hi3519dv500_pins_ioconfig2),
 };
 
+/*
+ * The Hi3516DV500 has no second MIPI RX input: the upper part of the
+ * ioconfig2 block (offsets 0x48 to 0xa4) exposes plain GPIO13/GPIO14
+ * pads instead, and the single MIPI RX input loses its "RX0" index in
+ * the pad names.
+ */
+static const struct hi3519dv500_pin hi3516dv500_pins_ioconfig2[] = {
+	{ "LSADC_CH0",		0x000,	HI3519DV500_IO_2 },
+	{ "LSADC_CH1",		0x004,	HI3519DV500_IO_2 },
+	{ "LSADC_CH2",		0x008,	HI3519DV500_IO_2 },
+	{ "LSADC_CH3",		0x00c,	HI3519DV500_IO_2 },
+	{ "USB_VBUS",		0x010,	HI3519DV500_IO_2 },
+	{ "USB_PWREN",		0x014,	HI3519DV500_IO_2 },
+	{ "SYS_RSTN_OUT",	0x018,	HI3519DV500_IO_2 },
+	{ "PWM_OUT0_0_P",	0x01c,	HI3519DV500_IO_6 },
+	{ "PWM_OUT1_0_P",	0x020,	HI3519DV500_IO_2 },
+	{ "SPI0_CSN1",		0x024,	HI3519DV500_IO_6 },
+	{ "SPI0_CSN0",		0x028,	HI3519DV500_IO_6 },
+	{ "SPI0_SDI",		0x02c,	HI3519DV500_IO_6 },
+	{ "SPI0_SDO",		0x030,	HI3519DV500_IO_6 },
+	{ "SPI0_SCLK",		0x034,	HI3519DV500_IO_EMMC },
+	{ "SENSOR0_HS",	0x038,	HI3519DV500_IO_6 },
+	{ "SENSOR0_VS",	0x03c,	HI3519DV500_IO_6 },
+	{ "SENSOR0_RSTN",	0x040,	HI3519DV500_IO_6 },
+	{ "SENSOR0_CLK",	0x044,	HI3519DV500_IO_EMMC },
+	{ "MIPI_RX_D0N",	0x048,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D0P",	0x04c,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D2N",	0x050,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D2P",	0x054,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_CK0N",	0x058,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_CK0P",	0x05c,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_CK1N",	0x060,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_CK1P",	0x064,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D1N",	0x068,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D1P",	0x06c,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D3N",	0x070,	HI3519DV500_IO_7_2 },
+	{ "MIPI_RX_D3P",	0x074,	HI3519DV500_IO_7_2 },
+	{ "GPIO13_5",		0x078,	HI3519DV500_IO_7_2 },
+	{ "GPIO13_6",		0x07c,	HI3519DV500_IO_7_2 },
+	{ "GPIO13_7",		0x080,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_0",		0x084,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_1",		0x088,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_2",		0x08c,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_3",		0x090,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_4",		0x094,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_5",		0x098,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_6",		0x09c,	HI3519DV500_IO_7_2 },
+	{ "GPIO14_7",		0x0a0,	HI3519DV500_IO_7_2 },
+	{ "GPIO1_7",		0x0a4,	HI3519DV500_IO_7_2 },
+};
+
+static const struct hi3519dv500_pinctrl_data hi3516dv500_ioconfig2_data = {
+	.pins = hi3516dv500_pins_ioconfig2,
+	.npins = ARRAY_SIZE(hi3516dv500_pins_ioconfig2),
+};
+
 struct hi3519dv500_mux {
 	unsigned int pin;
 	u32 func;
@@ -602,6 +658,9 @@ static const struct of_device_id hi3519dv500_pinctrl_of_match[] = {
 	}, {
 		.compatible = "hisilicon,hi3519dv500-ioconfig2",
 		.data = &hi3519dv500_ioconfig2_data,
+	}, {
+		.compatible = "hisilicon,hi3516dv500-ioconfig2",
+		.data = &hi3516dv500_ioconfig2_data,
 	}, { /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, hi3519dv500_pinctrl_of_match);
