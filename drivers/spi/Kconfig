@@ -463,6 +463,20 @@ config SPI_HISI_SFC_V3XX
 	  This enables support for HiSilicon v3xx SPI NOR flash controller
 	  found in hi16xx chipsets.
 
+config SPI_HISI_FMCV100_FLASH
+	tristate "HiSilicon FMCv100 serial flash controller"
+	depends on (ARCH_HISI && ARM64) || COMPILE_TEST
+	depends on HAS_IOMEM && SPI_MEM
+	help
+	  This enables support for the serial (SPI NOR and SPI NAND) modes
+	  of the FMCv100 flash controller found in HiSilicon Hi3519DV500
+	  SoC.  The controller is driven as a spi-mem controller and
+	  serves SPI NOR chips through the spi-nor core and SPI NAND
+	  chips with on-die ECC through the spinand core.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called spi-hisi-fmcv100-flash.
+
 config SPI_NXP_FLEXSPI
 	tristate "NXP Flex SPI controller"
 	depends on ARCH_LAYERSCAPE || ARCH_MXC || COMPILE_TEST
