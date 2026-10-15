@@ -560,6 +560,78 @@
 			status = "disabled";
 		};
 
+		spi0: spi@11070000 {
+			compatible = "arm,pl022", "arm,primecell";
+			arm,primecell-periphid = <0x00800022>;
+			reg = <0x11070000 0x1000>, <0x17a40220 0x4>;
+			interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_SPI0_CLK>, <&crg HI3519DV500_SPI0_CLK>;
+			clock-names = "sspclk", "apb_pclk";
+			resets = <&crg 0x4480 0>;
+			dmas = <&dma 12 12>, <&dma 13 13>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi0_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cs-gpios = <0>, <0>;
+			status = "disabled";
+		};
+
+		spi1: spi@11071000 {
+			compatible = "arm,pl022", "arm,primecell";
+			arm,primecell-periphid = <0x00800022>;
+			reg = <0x11071000 0x1000>;
+			interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_SPI1_CLK>, <&crg HI3519DV500_SPI1_CLK>;
+			clock-names = "sspclk", "apb_pclk";
+			resets = <&crg 0x4488 0>;
+			dmas = <&dma 14 14>, <&dma 15 15>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi1_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cs-gpios = <0>;
+			status = "disabled";
+		};
+
+		spi2: spi@11072000 {
+			compatible = "arm,pl022", "arm,primecell";
+			arm,primecell-periphid = <0x00800022>;
+			reg = <0x11072000 0x1000>;
+			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_SPI2_CLK>, <&crg HI3519DV500_SPI2_CLK>;
+			clock-names = "sspclk", "apb_pclk";
+			resets = <&crg 0x4490 0>;
+			dmas = <&dma 16 16>, <&dma 17 17>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi2_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cs-gpios = <0>;
+			status = "disabled";
+		};
+
+		spi3: spi@11073000 {
+			compatible = "arm,pl022", "arm,primecell";
+			arm,primecell-periphid = <0x00800022>;
+			reg = <0x11073000 0x1000>, <0x11024610 0x4>;
+			interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&crg HI3519DV500_SPI3_CLK>, <&crg HI3519DV500_SPI3_CLK>;
+			clock-names = "sspclk", "apb_pclk";
+			resets = <&crg 0x4498 0>;
+			dmas = <&dma 18 18>, <&dma 19 19>;
+			dma-names = "rx", "tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi3m0_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cs-gpios = <0>, <0>;
+			status = "disabled";
+		};
+
 		gpio0: gpio@11090000 {
 			compatible = "arm,pl061", "arm,primecell";
 			reg = <0x11090000 0x1000>;
