@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+
+/dts-v1/;
+
+#include "hi3519dv500-demb.dtsi"
+
+/ {
+	model = "HiSilicon Hi3519DV500 DEMB (eMMC)";
+	compatible = "hisilicon,hi3519dv500-demb", "hisilicon,hi3519dv500";
+
+	aliases {
+		serial0 = &uart0;
+
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		bootargs = "earlycon=pl011,0x11040000 console=ttyAMA0,115200";
+	};
+
+	memory@40030000 {
+		device_type = "memory";
+		reg = <0x0 0x40030000 0x0 0x40000000>;
+	};
+};
+
+&mmc0 {
+	bus-width = <8>;
+	non-removable;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	cap-mmc-hw-reset;
+	no-sd;
+	no-sdio;
+	pinctrl-names = "default", "mmc-hs", "hs200", "hs400";
+	pinctrl-0 = <&mmc0_clk_pins &mmc0_cmd_pins &mmc0_data_pins
+		     &mmc0_rst_pins &mmc0_ds_pins>;
+	pinctrl-1 = <&mmc0_hs_clk_pins &mmc0_hs_data_pins>;
+	pinctrl-2 = <&mmc0_hs200_clk_pins &mmc0_hs200_data_pins
+		     &mmc0_hs200_ds_pins>;
+	pinctrl-3 = <&mmc0_hs400_pins &mmc0_hs400_ds_pins>;
+	status = "okay";
+};
