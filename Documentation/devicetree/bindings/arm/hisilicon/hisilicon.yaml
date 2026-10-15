@@ -15,6 +15,11 @@ properties:
 
   compatible:
     oneOf:
+      - description: Hi3516DV500 based boards.
+        items:
+          - const: sunny,hi3516dv500-camera-flash
+          - const: hisilicon,hi3516dv500
+
       - description: Hi3519DV500 based boards.
         items:
           - const: sunny,hi3519dv500-camera-flash
