@@ -236,6 +236,18 @@
 			};
 		};
 
+		fmc: spi@10000000 {
+			compatible = "hisilicon,fmcv100-spi-flash";
+			reg = <0x10000000 0x1000>, <0x0f000000 0x1000000>;
+			reg-names = "control", "memory";
+			clocks = <&crg HI3519DV500_FMC_CLK>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sfc_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
 		mmc0: mmc@10020000 {
 			compatible = "hisilicon,hi3519dv500-dwcmshc";
 			reg = <0x10020000 0x1000>;
