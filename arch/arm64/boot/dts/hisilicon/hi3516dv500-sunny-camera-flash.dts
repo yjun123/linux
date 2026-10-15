@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/*
+ * Copyright (c) 2026 Zhejiang Sunny Optical Intelligent Technology Co., Ltd
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/pinctrl-hi3519dv500.h>
+#include "hi3516dv500.dtsi"
+
+/ {
+	model = "Sunny HI3516DV500 Camera (Nor Flash)";
+	compatible = "sunny,hi3516dv500-camera-flash", "hisilicon,hi3516dv500";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		bootargs = "earlycon=pl011,0x11040000 console=ttyAMA0,115200";
+	};
+
+	memory@40030000 {
+		device_type = "memory";
+		reg = <0x0 0x40030000 0x0 0x40000000>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&mmc0 {
+	status = "okay";
+};
+
+&fmc {
+	status = "okay";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <24000000>;
+	};
+};
+
+&wdt {
+	status = "okay";
+};
+
+&rtc {
+	status = "okay";
+};
+
+&tsensor {
+	status = "okay";
+};
+
+/ {
+	thermal-zones {
+		cpu-thermal {
+			polling-delay = <0>;
+			polling-delay-passive = <0>;
+			thermal-sensors = <&tsensor 0>;
+		};
+	};
+};
+
+&i2c3 {
+	pinctrl-0 = <&i2c3_sda_pins &i2c3_scl_pins>;
+	clock-frequency = <400000>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "giantec,gt24p128f", "atmel,24c128";
+		reg = <0x50>;
+		pagesize = <64>;
+		size = <16384>;
+	};
+};
+
+&i2c4 {
+	pinctrl-0 = <&i2c4_sda_pins &i2c4_scl_pins>;
+	clock-frequency = <400000>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "giantec,gt24p128f", "atmel,24c128";
+		reg = <0x50>;
+		pagesize = <64>;
+		size = <16384>;
+	};
+};
+
+&ioconfig2 {
+	i2c3_sda_pins: i2c3-sda-pins {
+		pinmux = <HI3519DV500_PINMUX(0x28, 2)>;	/* I2C3_SDA */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+
+	i2c3_scl_pins: i2c3-scl-pins {
+		pinmux = <HI3519DV500_PINMUX(0x2c, 2)>;	/* I2C3_SCL */
+		bias-pull-up;
+		drive-strength = <3>;
+		slew-rate = <1>;
+	};
+
+	i2c4_sda_pins: i2c4-sda-pins {
+		pinmux = <HI3519DV500_PINMUX(0x30, 2)>;	/* I2C4_SDA */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+
+	i2c4_scl_pins: i2c4-scl-pins {
+		pinmux = <HI3519DV500_PINMUX(0x34, 2)>;	/* I2C4_SCL */
+		bias-pull-up;
+		drive-strength = <4>;
+		slew-rate = <1>;
+	};
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&gpio6 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&spi3 {
+	pinctrl-0 = <&spi3_pins &imu_int_pins>;
+	cs-gpios = <&gpio6 4 GPIO_ACTIVE_LOW>, <&gpio5 3 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	bmi088-accel@0 {
+		compatible = "bosch,bmi088-accel";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&gpio7>;
+		interrupts = <2 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "INT2";
+	};
+
+	gyroscope@1 {
+		compatible = "bosch,bmi088_gyro";
+		reg = <1>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&gpio7>;
+		interrupts = <0 IRQ_TYPE_EDGE_RISING>;
+	};
+};
+
+&usb {
+	status = "okay";
+};
+
+&usb2phy0 {
+	status = "okay";
+};
+
+&usb3phy0 {
+	status = "okay";
+};
+
+&ioconfig1 {
+	spi3_pins: spi3-pins {
+		pinmux = <HI3519DV500_PINMUX(0x88, 3)>,	/* SPI3_SCLK */
+			 <HI3519DV500_PINMUX(0x7c, 3)>,	/* SPI3_SDI */
+			 <HI3519DV500_PINMUX(0x98, 3)>,	/* SPI3_SDO */
+			 <HI3519DV500_PINMUX(0x78, 1)>,	/* GPIO5_3, gyro CS */
+			 <HI3519DV500_PINMUX(0x9c, 1)>;	/* GPIO6_4, accel CS */
+	};
+
+	imu_int_pins: imu-int-pins {
+		pinmux = <HI3519DV500_PINMUX(0xac, 0)>,	/* GPIO7_0, gyro INT */
+			 <HI3519DV500_PINMUX(0xb4, 0)>;	/* GPIO7_2, accel INT */
+	};
+};
