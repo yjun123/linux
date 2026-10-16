@@ -32,6 +32,7 @@
 #include <linux/scatterlist.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/minmax.h>
 
@@ -73,6 +74,13 @@
 #define SSP_MIS(r)	(r + 0x01C)
 #define SSP_ICR(r)	(r + 0x020)
 #define SSP_DMACR(r)	(r + 0x024)
+#define SSP_TXFIFO_CR(r)	(r + 0x028) /* vendor extension */
+#define SSP_RXFIFO_CR(r)	(r + 0x02C) /* vendor extension */
+/* Chip select route register field of the derivatives
+ * that pick the chip select pad through an external register.
+ */
+#define CS_ROUTE_SHIFT		2
+#define CS_ROUTE_MASK		(0x1UL << CS_ROUTE_SHIFT)
 #define SSP_CSR(r)	(r + 0x030) /* vendor extension */
 #define SSP_ITCR(r)	(r + 0x080)
 #define SSP_ITIP(r)	(r + 0x084)
@@ -319,6 +327,13 @@ enum ssp_writing {
  * @pl023: supports a subset of the ST extensions called "PL023"
  * @loopback: supports loopback mode
  * @internal_cs_ctrl: supports chip select control register
+ * @sse_cs_ctrl: the chip select pads follow the SSP enable bit, and
+ * controllers with two of them pick the pad through an external
+ * route register
+ * @clear_fifo_watermark: requires the vendor TX/RX FIFO control
+ * registers to be cleared on initialization, as the reset watermark
+ * of 4 halfwords stalls DMA transfers whose length is not a multiple
+ * of 4 halfwords
  */
 struct vendor_data {
 	int fifodepth;
@@ -328,6 +343,8 @@ struct vendor_data {
 	bool pl023;
 	bool loopback;
 	bool internal_cs_ctrl;
+	bool sse_cs_ctrl;
+	bool clear_fifo_watermark;
 };
 
 /**
@@ -357,6 +374,7 @@ struct vendor_data {
  * @dummypage: a dummy page used for driving data on the bus with DMA
  * @dma_running: indicates whether DMA is in operation
  * @cur_cs: current chip select index
+ * @cs_route: optional external chip select route register
  */
 struct pl022 {
 	struct amba_device		*adev;
@@ -387,6 +405,7 @@ struct pl022 {
 	bool				dma_running;
 #endif
 	int cur_cs;
+	void __iomem		*cs_route;
 };
 
 /**
@@ -438,11 +457,43 @@ static void internal_cs_control(struct pl022 *pl022, bool enable)
 	writew(tmp, SSP_CSR(pl022->virtbase));
 }
 
+/*
+ * sse_cs_control - Control the native chip select pads through
+ * the SSP enable bit.
+ * @pl022: SSP driver private data structure
+ * @enable: select/deselect the chip
+ *
+ * Used on derivatives that drive their chip select pads natively
+ * when the SSP is enabled. Controllers with two selects pick the
+ * pad through an external route register, whose bit 2 carries
+ * the select number.
+ */
+static void sse_cs_control(struct pl022 *pl022, bool enable)
+{
+	u32 tmp;
+
+	if (pl022->cs_route) {
+		tmp = readl(pl022->cs_route);
+		tmp &= ~CS_ROUTE_MASK;
+		tmp |= (u32)pl022->cur_cs << CS_ROUTE_SHIFT;
+		writel(tmp, pl022->cs_route);
+	}
+
+	if (enable)
+		writew((readw(SSP_CR1(pl022->virtbase)) | SSP_CR1_MASK_SSE),
+		       SSP_CR1(pl022->virtbase));
+	else
+		writew((readw(SSP_CR1(pl022->virtbase)) & ~SSP_CR1_MASK_SSE),
+		       SSP_CR1(pl022->virtbase));
+}
+
 static void pl022_cs_control(struct spi_device *spi, bool enable)
 {
 	struct pl022 *pl022 = spi_controller_get_devdata(spi->controller);
 	if (pl022->vendor->internal_cs_ctrl)
 		internal_cs_control(pl022, enable);
+	else if (pl022->vendor->sse_cs_ctrl)
+		sse_cs_control(pl022, enable);
 }
 
 /**
@@ -560,6 +611,11 @@ static void restore_state(struct pl022 *pl022)
  */
 static void load_ssp_default_config(struct pl022 *pl022)
 {
+	if (pl022->vendor->clear_fifo_watermark) {
+		writel(0, SSP_TXFIFO_CR(pl022->virtbase));
+		writel(0, SSP_RXFIFO_CR(pl022->virtbase));
+	}
+
 	if (pl022->vendor->pl023) {
 		writel(DEFAULT_SSP_REG_CR0_ST_PL023, SSP_CR0(pl022->virtbase));
 		writew(DEFAULT_SSP_REG_CR1_ST_PL023, SSP_CR1(pl022->virtbase));
@@ -1916,6 +1972,24 @@ static int pl022_probe(struct amba_device *adev, const struct amba_id *id)
 		status = -ENOMEM;
 		goto err_no_ioremap;
 	}
+
+	/*
+	 * The derivatives that drive their chip select pads through
+	 * the SSP enable bit pick the pad of controllers with two
+	 * selects through a second register window.
+	 */
+	if (pl022->vendor->sse_cs_ctrl) {
+		struct resource res;
+
+		if (of_address_to_resource(dev->of_node, 1, &res) == 0) {
+			pl022->cs_route = devm_ioremap(dev, res.start,
+						       resource_size(&res));
+			if (!pl022->cs_route) {
+				status = -ENOMEM;
+				goto err_no_ioremap;
+			}
+		}
+	}
 	dev_info(&adev->dev, "mapped registers from %pa to %p\n",
 		&adev->res.start, pl022->virtbase);
 
@@ -2118,6 +2192,18 @@ static struct vendor_data vendor_lsi = {
 	.internal_cs_ctrl = true,
 };
 
+static struct vendor_data vendor_hisilicon = {
+	.fifodepth = 256,
+	.max_bpw = 16,
+	.unidir = false,
+	.extended_cr = false,
+	.pl023 = false,
+	.loopback = true,
+	.internal_cs_ctrl = false,
+	.sse_cs_ctrl = true,
+	.clear_fifo_watermark = true,
+};
+
 static const struct amba_id pl022_ids[] = {
 	{
 		/*
@@ -2157,6 +2243,19 @@ static const struct amba_id pl022_ids[] = {
 		.id	= 0x000b6022,
 		.mask	= 0x000fffff,
 		.data	= &vendor_lsi,
+	},
+	{
+		/*
+		 * HiSilicon derivative, this has a 16bit wide
+		 * and 256 locations deep TX/RX FIFO, and TX/RX FIFO
+		 * control registers at offset 0x28/0x2C whose reset
+		 * value needs to be cleared. The peripheral ID is
+		 * supplied through the "arm,primecell-periphid"
+		 * device tree property on this platform.
+		 */
+		.id	= 0x00800022,
+		.mask	= 0xffffffff,
+		.data	= &vendor_hisilicon,
 	},
 	{ 0, 0 },
 };
