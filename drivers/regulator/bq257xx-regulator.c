@@ -102,6 +102,98 @@ static const struct regulator_desc bq25703_vbus_desc = {
 	.vsel_mask = BQ25703_OTG_VOLT_MASK,
 };
 
+/* The SC8886S OTG voltage DAC uses a 12-bit field at 8 mV per LSB in bits
+ * [13:2], plus a DC offset selected by the OTG_RANGE_LOW bit (ChargeOption3
+ * [2]). With OTG_RANGE_LOW set the offset is 0 V and the output ranges from
+ * 3.00 V to 22.72 V; with it cleared the offset is 1.28 V and the output
+ * ranges from 4.28 V to 24.00 V. Voltages up to 22.72 V use the low range,
+ * higher voltages use the high range.
+ */
+static int sc8886s_vbus_get_voltage_sel(struct regulator_dev *rdev)
+{
+	struct regmap *regmap = rdev_get_regmap(rdev);
+	unsigned int field, range_low;
+	int ret;
+
+	ret = regmap_read(regmap, BQ25703_OTG_VOLT, &field);
+	if (ret)
+		return ret;
+	field = FIELD_GET(SC8886S_OTG_VOLT_MASK, field);
+
+	ret = regmap_read(regmap, BQ25703_CHARGE_OPTION_3, &range_low);
+	if (ret)
+		return ret;
+	range_low = !!(range_low & SC8886S_OTG_RANGE_LOW);
+
+	/* sel = (V - min) / step; low-range field = V / step, high-range
+	 * field = (V - offset) / step.
+	 */
+	if (range_low)
+		return field - SC8886S_OTG_VOLT_MIN_UV / SC8886S_OTG_VOLT_STEP_UV;
+	return field - SC8886S_OTG_VOLT_MIN_UV / SC8886S_OTG_VOLT_STEP_UV
+		    + SC8886S_OTG_VOLT_OFFSET_UV / SC8886S_OTG_VOLT_STEP_UV;
+}
+
+static int sc8886s_vbus_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
+{
+	struct regmap *regmap = rdev_get_regmap(rdev);
+	unsigned int vout_mv, range_low, field;
+	int ret;
+
+	vout_mv = SC8886S_OTG_VOLT_MIN_UV / 1000 +
+		  sel * (SC8886S_OTG_VOLT_STEP_UV / 1000);
+
+	/* Up to 22.72 V use the low range (0 V offset), otherwise the high
+	 * range (1.28 V offset).
+	 */
+	range_low = vout_mv <= SC8886S_OTG_VOLT_LOW_MAX_UV / 1000;
+
+	ret = regmap_update_bits(regmap, BQ25703_CHARGE_OPTION_3,
+				 SC8886S_OTG_RANGE_LOW,
+				 range_low ? SC8886S_OTG_RANGE_LOW : 0);
+	if (ret)
+		return ret;
+
+	if (range_low)
+		field = vout_mv / (SC8886S_OTG_VOLT_STEP_UV / 1000);
+	else
+		field = (vout_mv - SC8886S_OTG_VOLT_OFFSET_UV / 1000) /
+			(SC8886S_OTG_VOLT_STEP_UV / 1000);
+
+	return regmap_update_bits(regmap, BQ25703_OTG_VOLT,
+				  SC8886S_OTG_VOLT_MASK,
+				  FIELD_PREP(SC8886S_OTG_VOLT_MASK, field));
+}
+
+static const struct regulator_ops sc8886s_vbus_ops = {
+	.enable = bq25703_vbus_enable,
+	.disable = bq25703_vbus_disable,
+	.is_enabled = regulator_is_enabled_regmap,
+	.list_voltage = regulator_list_voltage_linear,
+	.get_voltage_sel = sc8886s_vbus_get_voltage_sel,
+	.set_voltage_sel = sc8886s_vbus_set_voltage_sel,
+	.get_current_limit = bq25703_vbus_get_cur_limit,
+	.set_current_limit = bq25703_vbus_set_cur_limit,
+};
+
+static const struct regulator_desc sc8886s_vbus_desc = {
+	.name = "vbus",
+	.of_match = of_match_ptr("vbus"),
+	.regulators_node = of_match_ptr("regulators"),
+	.type = REGULATOR_VOLTAGE,
+	.owner = THIS_MODULE,
+	.ops = &sc8886s_vbus_ops,
+	.min_uV = SC8886S_OTG_VOLT_MIN_UV,
+	.uV_step = SC8886S_OTG_VOLT_STEP_UV,
+	.n_voltages = SC8886S_OTG_VOLT_NUM_VOLT,
+	.enable_mask = BQ25703_EN_OTG_MASK,
+	.enable_reg = BQ25703_CHARGE_OPTION_3,
+	.enable_val = BQ25703_EN_OTG_MASK,
+	.disable_val = 0,
+	.vsel_reg = BQ25703_OTG_VOLT,
+	.vsel_mask = SC8886S_OTG_VOLT_MASK,
+};
+
 /* Get optional GPIO for OTG regulator enable. */
 static void bq257xx_reg_dt_parse_gpio(struct platform_device *pdev)
 {
@@ -144,6 +236,7 @@ static int bq257xx_regulator_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct bq257xx_reg_data *pdata;
 	struct regulator_config cfg = {};
+	struct bq257xx_device *bq = dev_get_drvdata(pdev->dev.parent);
 
 	device_set_of_node_from_dev(&pdev->dev, pdev->dev.parent);
 
@@ -151,7 +244,10 @@ static int bq257xx_regulator_probe(struct platform_device *pdev)
 	if (!pdata)
 		return -ENOMEM;
 
-	pdata->desc = bq25703_vbus_desc;
+	if (bq->type == SC8886S)
+		pdata->desc = sc8886s_vbus_desc;
+	else
+		pdata->desc = bq25703_vbus_desc;
 
 	platform_set_drvdata(pdev, pdata);
 	bq257xx_reg_dt_parse_gpio(pdev);
