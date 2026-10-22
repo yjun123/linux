@@ -83,7 +83,13 @@ static const struct regmap_config bq25792_regmap_config = {
 	.volatile_table = &bq25792_volatile_regs,
 };
 
-static const struct mfd_cell cells[] = {
+static const struct mfd_cell bq25703_cells[] = {
+	MFD_CELL_NAME("bq257xx-regulator"),
+	MFD_CELL_NAME("bq257xx-charger"),
+	MFD_CELL_NAME("bq257xx-fgu"),
+};
+
+static const struct mfd_cell bq25792_cells[] = {
 	MFD_CELL_NAME("bq257xx-regulator"),
 	MFD_CELL_NAME("bq257xx-charger"),
 };
@@ -125,8 +131,9 @@ static int bq257xx_check_dev_id(struct bq257xx_device *ddata)
 static int bq257xx_probe(struct i2c_client *client)
 {
 	const struct regmap_config *rcfg;
+	const struct mfd_cell *cells;
 	struct bq257xx_device *ddata;
-	int ret;
+	int n_cells, ret;
 
 	ddata = devm_kzalloc(&client->dev, sizeof(*ddata), GFP_KERNEL);
 	if (!ddata)
@@ -158,8 +165,16 @@ static int bq257xx_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(&client->dev, ret, "Failed to verify device ID\n");
 
+	if (ddata->type == BQ25792) {
+		cells = bq25792_cells;
+		n_cells = ARRAY_SIZE(bq25792_cells);
+	} else {
+		cells = bq25703_cells;
+		n_cells = ARRAY_SIZE(bq25703_cells);
+	}
+
 	ret = devm_mfd_add_devices(&client->dev, PLATFORM_DEVID_AUTO,
-				   cells, ARRAY_SIZE(cells), NULL, 0, NULL);
+				   cells, n_cells, NULL, 0, NULL);
 	if (ret)
 		return dev_err_probe(&client->dev, ret,
 				     "Failed to register child devices\n");
