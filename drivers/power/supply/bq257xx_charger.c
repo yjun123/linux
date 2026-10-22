@@ -1353,12 +1353,19 @@ static void bq257xx_charger_shutdown(struct platform_device *pdev)
 	pdata->chip->bq257xx_hw_shutdown(pdata);
 }
 
+static const struct platform_device_id bq257xx_chg_id[] = {
+	{ "bq257xx-charger", 0 },
+	{}
+};
+MODULE_DEVICE_TABLE(platform, bq257xx_chg_id);
+
 static struct platform_driver bq257xx_chg_driver = {
 	.driver = {
 		.name = "bq257xx-charger",
 	},
 	.probe = bq257xx_charger_probe,
 	.shutdown = bq257xx_charger_shutdown,
+	.id_table = bq257xx_chg_id,
 };
 module_platform_driver(bq257xx_chg_driver);
 
