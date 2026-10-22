@@ -89,6 +89,7 @@ struct bq257xx_chg {
 	u32 vbat_max;
 	u32 ichg_max;
 	u32 vsys_min;
+	const char *manufacturer;
 };
 
 /**
@@ -962,7 +963,7 @@ static int bq257xx_get_charger_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_MANUFACTURER:
-		val->strval = "Texas Instruments";
+		val->strval = pdata->manufacturer;
 		break;
 
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -1179,6 +1180,66 @@ static const struct power_supply_desc bq257xx_power_supply_desc = {
 	.init = bq257xx_charger_init,
 };
 
+/**
+ * sc8886s_get_chrg_volt() - Get the maximum charge voltage (SC8886S)
+ * @pdata: driver platform data
+ * @intval: maximum charge voltage value
+ *
+ * The SC8886S charge voltage register is 12-bit at 8 mV per LSB in bits
+ * [14:3], whereas the BQ25703A uses 11 bits at 16 mV per LSB.
+ *
+ * Return: Returns 0 on success or error if unable to read value.
+ */
+static int sc8886s_get_chrg_volt(struct bq257xx_chg *pdata, int *intval)
+{
+	unsigned int reg;
+	int ret;
+
+	ret = regmap_read(pdata->bq->regmap, BQ25703_MAX_CHARGE_VOLT, &reg);
+	if (ret)
+		return ret;
+
+	*intval = FIELD_GET(SC8886S_MAX_CHARGE_VOLT_MASK, reg) *
+		  SC8886S_VBATREG_STEP_UV;
+
+	return 0;
+}
+
+/**
+ * sc8886s_set_chrg_volt() - Set the maximum charge voltage (SC8886S)
+ * @pdata: driver platform data
+ * @vbat: voltage value to set in uV.
+ *
+ * Return: Returns 0 on success or error if an error occurs.
+ */
+static int sc8886s_set_chrg_volt(struct bq257xx_chg *pdata, int vbat)
+{
+	unsigned int reg;
+	int vbat_max = pdata->vbat_max;
+
+	vbat = clamp(vbat, BQ25703_VBATREG_MIN_UV, vbat_max);
+	reg = FIELD_PREP(SC8886S_MAX_CHARGE_VOLT_MASK,
+			 vbat / SC8886S_VBATREG_STEP_UV);
+
+	return regmap_write(pdata->bq->regmap, BQ25703_MAX_CHARGE_VOLT, reg);
+}
+
+static const struct bq257xx_chip_info sc8886s_chip_info = {
+		.default_iindpm_uA = BQ25703_IINDPM_DEFAULT_UA,
+		.bq257xx_hw_init = &bq25703_hw_init,
+		.bq257xx_hw_shutdown = &bq25703_hw_shutdown,
+		.bq257xx_get_state = &bq25703_get_state,
+		.bq257xx_get_ichg = &bq25703_get_ichg_cur,
+		.bq257xx_set_ichg = &bq25703_set_ichg_cur,
+		.bq257xx_get_vbatreg = &sc8886s_get_chrg_volt,
+		.bq257xx_set_vbatreg = &sc8886s_set_chrg_volt,
+		.bq257xx_get_iindpm = &bq25703_get_iindpm,
+		.bq257xx_set_iindpm = &bq25703_set_iindpm,
+		.bq257xx_get_cur = &bq25703_get_cur,
+		.bq257xx_get_vbat = &bq25703_get_vbat,
+		.bq257xx_get_min_vsys = &bq25703_get_min_vsys,
+};
+
 static const struct bq257xx_chip_info bq25703_chip_info = {
 		.default_iindpm_uA = BQ25703_IINDPM_DEFAULT_UA,
 		.bq257xx_hw_init = &bq25703_hw_init,
@@ -1239,10 +1300,16 @@ static int bq257xx_charger_probe(struct platform_device *pdev)
 
 	switch (bq->type) {
 	case BQ25703A:
+		pdata->manufacturer = "Texas Instruments";
 		pdata->chip = &bq25703_chip_info;
 		break;
 	case BQ25792:
+		pdata->manufacturer = "Texas Instruments";
 		pdata->chip = &bq25792_chip_info;
+		break;
+	case SC8886S:
+		pdata->manufacturer = "Southchip Semiconductor";
+		pdata->chip = &sc8886s_chip_info;
 		break;
 	default:
 		return dev_err_probe(dev, -EINVAL, "Unknown chip type\n");
