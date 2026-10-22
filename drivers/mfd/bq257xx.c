@@ -4,6 +4,7 @@
  * Copyright (C) 2025 Chris Morgan <macromorgan@hotmail.com>
  */
 
+#include <linux/bitfield.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/mfd/bq257xx.h>
@@ -87,6 +88,40 @@ static const struct mfd_cell cells[] = {
 	MFD_CELL_NAME("bq257xx-charger"),
 };
 
+/*
+ * Verify that the device on the bus reports the ID expected for the type
+ * selected by the compatible string. Only the SC8886S is checked here; the
+ * BQ25703A and BQ25792 have historically been probed without an ID check.
+ */
+static int bq257xx_check_dev_id(struct bq257xx_device *ddata)
+{
+	unsigned int id;
+	int ret;
+
+	if (ddata->type != SC8886S)
+		return 0;
+
+	ret = regmap_read(ddata->regmap, BQ25703_MANUFACT_DEV_ID, &id);
+	if (ret)
+		return ret;
+
+	if (FIELD_GET(SC8886S_MANUFACT_ID_MASK, id) != SC8886S_MANUFACT_ID) {
+		dev_err(&ddata->client->dev,
+			"Unexpected manufacturer ID 0x%02x (expected 0x%02x)\n",
+			FIELD_GET(SC8886S_MANUFACT_ID_MASK, id), SC8886S_MANUFACT_ID);
+		return -ENODEV;
+	}
+
+	if (FIELD_GET(SC8886S_DEV_ID_MASK, id) != SC8886S_DEV_ID) {
+		dev_err(&ddata->client->dev,
+			"Unexpected device ID 0x%02x (expected 0x%02x)\n",
+			FIELD_GET(SC8886S_DEV_ID_MASK, id), SC8886S_DEV_ID);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int bq257xx_probe(struct i2c_client *client)
 {
 	const struct regmap_config *rcfg;
@@ -102,6 +137,7 @@ static int bq257xx_probe(struct i2c_client *client)
 
 	switch (ddata->type) {
 	case BQ25703A:
+	case SC8886S:
 		rcfg = &bq25703_regmap_config;
 		break;
 	case BQ25792:
@@ -118,6 +154,9 @@ static int bq257xx_probe(struct i2c_client *client)
 	}
 
 	i2c_set_clientdata(client, ddata);
+	ret = bq257xx_check_dev_id(ddata);
+	if (ret)
+		return dev_err_probe(&client->dev, ret, "Failed to verify device ID\n");
 
 	ret = devm_mfd_add_devices(&client->dev, PLATFORM_DEVID_AUTO,
 				   cells, ARRAY_SIZE(cells), NULL, 0, NULL);
@@ -131,11 +170,13 @@ static int bq257xx_probe(struct i2c_client *client)
 static const struct i2c_device_id bq257xx_i2c_ids[] = {
 	{ "bq25703a", BQ25703A },
 	{ "bq25792", BQ25792 },
+	{ "sc8886s", SC8886S },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, bq257xx_i2c_ids);
 
 static const struct of_device_id bq257xx_of_match[] = {
+	{ .compatible = "southchip,sc8886s", .data = (void *)SC8886S },
 	{ .compatible = "ti,bq25703a", .data = (void *)BQ25703A },
 	{ .compatible = "ti,bq25792", .data = (void *)BQ25792 },
 	{}
