@@ -13,6 +13,7 @@ properties:
   compatible:
     oneOf:
       - enum:
+          - southchip,sc8886s
           - ti,bq25703a
           - ti,bq25792
       - items:
@@ -61,10 +62,10 @@ properties:
             maximum: 6350000
           regulator-min-microvolt:
             minimum: 2800000
-            maximum: 22000000
+            maximum: 24000000
           regulator-max-microvolt:
             minimum: 2800000
-            maximum: 22000000
+            maximum: 24000000
           enable-gpios:
             description:
               The BQ25703 may require both a register write and a GPIO
@@ -79,6 +80,32 @@ properties:
 
 allOf:
   - $ref: /schemas/power/supply/power-supply.yaml#
+  - if:
+      properties:
+        compatible:
+          const: southchip,sc8886s
+    then:
+      properties:
+        input-current-limit-microamp:
+          minimum: 50000
+          maximum: 6400000
+          default: 3300000
+        regulators:
+          properties:
+            vbus:
+              properties:
+                regulator-min-microamp:
+                  minimum: 0
+                  maximum: 6350000
+                regulator-max-microamp:
+                  minimum: 0
+                  maximum: 6350000
+                regulator-min-microvolt:
+                  minimum: 3000000
+                  maximum: 24000000
+                regulator-max-microvolt:
+                  minimum: 3000000
+                  maximum: 24000000
   - if:
       properties:
         compatible:
