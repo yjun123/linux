@@ -267,11 +267,18 @@ static int bq257xx_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct platform_device_id bq257xx_reg_id[] = {
+	{ "bq257xx-regulator", 0 },
+	{}
+};
+MODULE_DEVICE_TABLE(platform, bq257xx_reg_id);
+
 static struct platform_driver bq257xx_reg_driver = {
 	.driver = {
 		.name = "bq257xx-regulator",
 	},
 	.probe = bq257xx_regulator_probe,
+	.id_table = bq257xx_reg_id,
 };
 
 module_platform_driver(bq257xx_reg_driver);
