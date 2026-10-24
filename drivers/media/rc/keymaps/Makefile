@@ -110,6 +110,7 @@ obj-$(CONFIG_RC_MAP) += \
 			rc-snapstream-firefly.o \
 			rc-streamzap.o \
 			rc-su3000.o \
+			rc-taiqicat-a01.o \
 			rc-tanix-tx3mini.o \
 			rc-tanix-tx5max.o \
 			rc-tbs-nec.o \
