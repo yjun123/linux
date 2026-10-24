@@ -334,6 +334,7 @@
 };
 
 &r_ir {
+	linux,rc-map-name = "rc-taiqicat-a01";
 	status = "okay";
 };
 
