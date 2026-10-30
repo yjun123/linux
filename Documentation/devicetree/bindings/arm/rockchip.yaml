@@ -30,6 +30,12 @@ properties:
           - const: vamrs,rock960
           - const: rockchip,rk3399
 
+      - description: 9Tripod Live3588 series board
+        items:
+          - enum:
+              - 9tripod,live3588-v4
+          - const: rockchip,rk3588
+
       - description: 9Tripod X3568 series board
         items:
           - enum:
