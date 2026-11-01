@@ -48,3 +48,13 @@
 &sdhc_1 {
 	status = "okay";
 };
+
+&usb {
+	extcon = <&pm8909_usbin>;
+	dr_mode = "peripheral";
+	status = "okay";
+};
+
+&usb_hs_phy {
+	extcon = <&pm8909_usbin>;
+};
