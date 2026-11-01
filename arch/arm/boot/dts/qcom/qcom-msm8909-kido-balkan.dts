@@ -123,6 +123,14 @@
 	extcon = <&pm8909_usbin>;
 };
 
+&wcnss {
+	status = "okay";
+};
+
+&wcnss_iris {
+	compatible = "qcom,wcn3620";
+};
+
 /* Voltage limits used by the downstream firmware for this board. */
 &smd_rpm_regulators {
 	s2 {
