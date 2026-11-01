@@ -44,3 +44,7 @@
 &blsp_uart1 {
 	status = "okay";
 };
+
+&sdhc_1 {
+	status = "okay";
+};
