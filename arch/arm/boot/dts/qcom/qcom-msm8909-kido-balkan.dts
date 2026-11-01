@@ -39,9 +39,41 @@
 			no-map;
 		};
 	};
+
+	/*
+	 * TODO: neither the design capacity nor an OCV/capacity table is known
+	 * yet, so capacity reporting will not work until they are added.
+	 */
+	bat: battery {
+		compatible = "simple-battery";
+		voltage-min-design-microvolt = <3400000>;
+		voltage-max-design-microvolt = <4400000>;
+	};
 };
 
 &blsp_uart1 {
+	status = "okay";
+};
+
+&pm8909_bms {
+	monitored-battery = <&bat>;
+	power-supplies = <&pm8909_charger>;
+	status = "okay";
+};
+
+&pm8909_charger {
+	monitored-battery = <&bat>;
+
+	/*
+	 * The battery is charged to 4.4 V. The current limit is a conservative
+	 * value for the small cell used in the watch.
+	 */
+	qcom,fast-charge-safe-current = <250000>;
+	qcom,fast-charge-safe-voltage = <4400000>;
+	status = "okay";
+};
+
+&pm8909_vib {
 	status = "okay";
 };
 
@@ -57,4 +89,94 @@
 
 &usb_hs_phy {
 	extcon = <&pm8909_usbin>;
+};
+
+/* Voltage limits used by the downstream firmware for this board. */
+&smd_rpm_regulators {
+	s2 {
+		regulator-min-microvolt = <1850000>;
+		regulator-max-microvolt = <1850000>;
+	};
+
+	l1 {
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <1000000>;
+	};
+
+	l2 {
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+	};
+
+	l4 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	l5 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	l6 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	l7 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	l8 {
+		regulator-min-microvolt = <2850000>;
+		regulator-max-microvolt = <2900000>;
+	};
+
+	l9 {
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	l10 {
+		regulator-min-microvolt = <1225000>;
+		regulator-max-microvolt = <1300000>;
+	};
+
+	l11 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <2950000>;
+		regulator-allow-set-load;
+		regulator-system-load = <200000>;
+	};
+
+	l12 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <2950000>;
+	};
+
+	l13 {
+		regulator-min-microvolt = <3075000>;
+		regulator-max-microvolt = <3075000>;
+	};
+
+	l14 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3000000>;
+	};
+
+	l15 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3000000>;
+	};
+
+	l17 {
+		regulator-min-microvolt = <2850000>;
+		regulator-max-microvolt = <2850000>;
+	};
+
+	l18 {
+		regulator-min-microvolt = <2700000>;
+		regulator-max-microvolt = <2700000>;
+	};
 };
