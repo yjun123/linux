@@ -19,6 +19,9 @@
 
 #include "qcom-msm8909-pm8909.dtsi"
 
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
 / {
 	model = "Kido K3A/F2 (balkan)";
 	compatible = "kido,balkan", "qcom,msm8909";
@@ -48,6 +51,35 @@
 		compatible = "simple-battery";
 		voltage-min-design-microvolt = <3400000>;
 		voltage-max-design-microvolt = <4400000>;
+	};
+};
+
+&blsp_i2c5 {
+	status = "okay";
+
+	touchscreen@38 {
+		/*
+		 * FocalTech FT3267. It is driven by FocalTech's own downstream
+		 * driver but speaks the FT5x06/FT6x06 register protocol. The
+		 * compatible below is provisional and has to be confirmed on
+		 * hardware.
+		 */
+		compatible = "focaltech,ft6236";
+		reg = <0x38>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+
+		reset-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
+
+		vcc-supply = <&pm8909_l17>;
+		iovcc-supply = <&pm8909_l6>;
+
+		pinctrl-0 = <&touchscreen_default>;
+		pinctrl-names = "default";
+
+		touchscreen-size-x = <240>;
+		touchscreen-size-y = <240>;
 	};
 };
 
@@ -178,5 +210,23 @@
 	l18 {
 		regulator-min-microvolt = <2700000>;
 		regulator-max-microvolt = <2700000>;
+	};
+};
+
+&tlmm {
+	touchscreen_default: touchscreen-default-state {
+		reset-pins {
+			pins = "gpio12";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		irq-pins {
+			pins = "gpio13";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
 	};
 };
