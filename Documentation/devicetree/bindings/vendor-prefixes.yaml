@@ -867,6 +867,8 @@ patternProperties:
     description: Keymile GmbH
   "^khadas,.*":
     description: Khadas
+  "^kido,.*":
+    description: Kido Technologies, Inc.
   "^kiebackpeter,.*":
     description: Kieback & Peter GmbH
   "^kinetic,.*":

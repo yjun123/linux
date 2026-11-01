@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Kido K3A / F2 (balkan) - MSM8909 based child smartwatch
+ *
+ * The K3A and F2 share one PCB and one device tree. The downstream bootloader
+ * carries three DTBs in total (K3A v0, K3A v1, K3A/F2 VN1) and picks one using
+ * the "kido,board-id" property: this board reports board-id 0x10.
+ *
+ * Not enabled:
+ *  - Display: the 240x240 ST7796S panel is driven over MIPI DSI in command
+ *    mode, but mainline has neither an MDP3 nor a DSI host driver for MSM8909.
+ *  - Camera: camss has no MSM8909 support.
+ *  - Sensors on blsp_i2c1: declared downstream (mpu6050, apds9900, and one of
+ *    mmc3416x/ak8963/qmcX983), but nothing answers on the bus, so their
+ *    presence is unconfirmed.
+ */
+
+/dts-v1/;
+
+#include "qcom-msm8909-pm8909.dtsi"
+
+/ {
+	model = "Kido K3A/F2 (balkan)";
+	compatible = "kido,balkan", "qcom,msm8909";
+	chassis-type = "watch";
+
+	aliases {
+		serial0 = &blsp_uart1;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	reserved-memory {
+		/* Venus firmware, reserved by the downstream bootloader. */
+		venus@8fb00000 {
+			reg = <0x8fb00000 0x400000>;
+			no-map;
+		};
+	};
+};
+
+&blsp_uart1 {
+	status = "okay";
+};
