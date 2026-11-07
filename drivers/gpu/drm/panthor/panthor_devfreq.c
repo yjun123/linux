@@ -69,6 +69,14 @@ static int panthor_devfreq_target(struct device *dev, unsigned long *freq,
 	opp = devfreq_recommended_opp(dev, freq, flags);
 	if (IS_ERR(opp))
 		return PTR_ERR(opp);
+
+	/*
+	 * Round the requested frequency to the exact OPP rate, so that
+	 * devfreq_update_status() can find it in the freq_table.  This
+	 * matters on platforms where the clock is not able to hit the OPP
+	 * rates exactly (e.g. RK3588 reports 297 MHz for the 300 MHz OPP).
+	 */
+	*freq = dev_pm_opp_get_freq(opp);
 	dev_pm_opp_put(opp);
 
 	err = dev_pm_opp_set_rate(dev, *freq);
