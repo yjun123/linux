@@ -375,6 +375,9 @@ int rtw89_acpi_evaluate_dsm(struct rtw89_dev *rtwdev,
 	union acpi_object *obj;
 	int ret;
 
+	if (!ACPI_HANDLE(rtwdev->dev))
+		return -ENOENT;
+
 	obj = acpi_evaluate_dsm(ACPI_HANDLE(rtwdev->dev), &rtw89_guid,
 				0, func, NULL);
 	if (!obj) {
