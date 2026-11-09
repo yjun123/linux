@@ -3527,6 +3527,20 @@
 		};
 
 		/omit-if-no-ref/
+		uart9m0_ctsn: uart9m0-ctsn {
+			rockchip,pins =
+				/* uart9m0_ctsn */
+				<4 RK_PC5 10 &pcfg_pull_none>;
+		};
+
+		/omit-if-no-ref/
+		uart9m0_rtsn: uart9m0-rtsn {
+			rockchip,pins =
+				/* uart9m0_rtsn */
+				<4 RK_PC4 10 &pcfg_pull_none>;
+		};
+
+		/omit-if-no-ref/
 		uart9m1_xfer: uart9m1-xfer {
 			rockchip,pins =
 				/* uart9_rx_m1 */
