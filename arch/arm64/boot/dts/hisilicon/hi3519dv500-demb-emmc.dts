@@ -20,7 +20,15 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
-		bootargs = "earlycon=pl011,0x11040000 console=ttyAMA0,115200";
+		/*
+		 * U-Boot rewrites this property in place with strlcpy() using
+		 * its "bootargs" environment variable.  The property must be
+		 * large enough for that value, otherwise the write overruns
+		 * into the following FDT structure block and the kernel fails
+		 * early_init_dt_scan() before the console is up.
+		 * Reserve COMMAND_LINE_SIZE (1024) bytes.
+		 */
+		bootargs = "earlycon=pl011,0x11040000 console=ttyAMA0,115200 bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs";
 	};
 
 	memory@40030000 {
