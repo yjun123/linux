@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// Copyright (C) 2026 Jun Yan <jerrysteve1101@gmail.com>
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+#include "hi3519dv500.dtsi"
+
+/ {
+	model = "Ebaina HongouPI 38C Board";
+	compatible = "ebaina,hongoupi-38c", "hisilicon,hi3519dv500";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		/*
+		 * U-Boot rewrites this property in place with strlcpy() using
+		 * its "bootargs" environment variable.  The property must be
+		 * large enough for that value, otherwise the write overruns
+		 * into the following FDT structure block and the kernel fails
+		 * early_init_dt_scan() before the console is up.
+		 * Reserve COMMAND_LINE_SIZE (1024) bytes.
+		 */
+		bootargs = "earlycon=pl011,0x11040000 console=ttyAMA0,115200 bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs-placeholder-bootargs";
+	};
+
+	memory@40030000 {
+		device_type = "memory";
+		reg = <0x0 0x40030000 0x0 0x40000000>;
+	};
+
+	dc_in_12v: regulator-dc-in-12v {
+		compatible = "regulator-fixed";
+		regulator-name = "dc_in_12v";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	vcc_5v: regulator-vcc-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&dc_in_12v>;
+	};
+
+	vcc_3v3: regulator-vcc-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&vcc_5v>;
+	};
+
+	vbus_port1: regulator-vbus-port1 {
+		compatible = "regulator-fixed";
+		regulator-name = "vbus_port1";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		enable-active-high;
+		gpio = <&gpio10 4 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&vcc_5v>;
+	};
+
+	vbus_port2: regulator-vbus-port2 {
+		compatible = "regulator-fixed";
+		regulator-name = "vbus_port2";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		enable-active-high;
+		gpio = <&gpio9 2 GPIO_ACTIVE_HIGH>;
+		vin-supply = <&vcc_5v>;
+	};
+
+	usb-sel {
+		compatible = "gpio-leds";
+
+		usb_sel_hub: usb-sel {
+			label = "usb-sel";
+			gpios = <&gpio10 5 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&rtc {
+	status = "okay";
+};
+
+&mmc0 {
+	bus-width = <4>;
+	non-removable;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	cap-mmc-hw-reset;
+	no-sd;
+	no-sdio;
+	pinctrl-names = "default", "mmc-hs", "hs200";
+	pinctrl-0 = <&mmc0_clk_pins &mmc0_cmd_pins &mmc0_4bit_data_pins
+		     &mmc0_rst_pins &mmc0_ds_pins>;
+	pinctrl-1 = <&mmc0_hs_clk_pins &mmc0_4bit_hs_data_pins>;
+	pinctrl-2 = <&mmc0_hs200_clk_pins &mmc0_4bit_hs200_data_pins
+		     &mmc0_hs200_ds_pins>;
+	status = "okay";
+};
+
+&mdio {
+	status = "okay";
+
+	ethphy: ethernet-phy@1 {
+		compatible = "ethernet-phy-id4f51.e91b";
+		reg = <1>;
+		reset-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;
+		reset-assert-us = <10000>;
+		reset-deassert-us = <100000>;
+	};
+};
+
+&gmac {
+	phy-handle = <&ethphy>;
+	phy-mode = "rgmii-id";
+	pinctrl-0 = <&rgmii_pins &mdio_pins &ephy_clk_pins>;
+	status = "okay";
+};
+
+&usb {
+	dr_mode = "otg";
+	usb-role-switch;
+	role-switch-default-mode = "host";
+	maximum-speed = "high-speed";
+	snps,usb2-lpm-disable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_vbus_pins &usb_sel_pins &usb_port1_vbus_pins
+		     &usb_port2_vbus_pins>;
+	status = "okay";
+};
+
+&ioconfig0 {
+	usb_sel_pins: usb-sel-pins {
+		pinmux = <HI3519DV500_PINMUX(0x18, 0)>;
+	};
+};
+
+&ioconfig2 {
+	usb_port1_vbus_pins: usb-port1-vbus-pins {
+		pinmux = <HI3519DV500_PINMUX(0x14, 0)>;
+	};
+};
+
+&ioconfig3 {
+	usb_port2_vbus_pins: usb-port2-vbus-pins {
+		pinmux = <HI3519DV500_PINMUX(0x20c, 1)>;
+	};
+};
