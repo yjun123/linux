@@ -15,6 +15,11 @@ properties:
 
   compatible:
     oneOf:
+      - description: Ebaina HongouPI 38C boards.
+        items:
+          - const: ebaina,hongoupi-38c
+          - const: hisilicon,hi3519dv500
+
       - description: HiSilicon Hi3519DV500 DEMB boards.
         items:
           - const: hisilicon,hi3519dv500-demb
