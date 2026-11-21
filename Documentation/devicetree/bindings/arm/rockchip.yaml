@@ -844,6 +844,11 @@ properties:
               - lunzn,fastrhino-r68s
           - const: rockchip,rk3568
 
+      - description: Meibeike BeikeYun P1
+        items:
+          - const: meibeike,beikeyun-p1
+          - const: rockchip,rk3328
+
       - description: mqmaker MiQi
         items:
           - const: mqmaker,miqi
